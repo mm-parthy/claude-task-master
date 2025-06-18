@@ -2,15 +2,10 @@
 "task-master-ai": patch
 ---
 
-Added comprehensive tag-aware expand tests to the E2E suite:
+Enhance E2E tests with comprehensive tag-aware expand testing to verify tag corruption fix
 
-- Introduce a new `feature-expand` tag for testing.
-- Add tasks under `feature-expand` and capture their IDs dynamically.
-- Verify tag counts before and after:
-  - `expand --tag`
-  - `expand --tag --force`
-  - `expand --tag --all`
-- Ensure no existing tags are corrupted and subtasks are created as expected.
-- Reordered the new tests to run before any task-removal steps.
-- Fixed file-path checks for `.taskmaster/config.json` and
-  `.taskmaster/tasks/tasks.json`.
+- Add new test section for feature-expand tag creation and testing during expand operations
+- Verify tag preservation during expand, force expand, and expand --all operations
+- Test that master tag remains intact while feature-expand tag receives subtasks correctly
+- Fix file path references to use correct .taskmaster/config.json and .taskmaster/tasks/tasks.json locations
+- All tag corruption verification tests pass successfully, confirming the expand command tag corruption bug fix works as expected
