@@ -296,9 +296,8 @@ export default {
 };
 
 class FileWatcher {
-	constructor(projectRoot, testMode = false, onUpdate) {
+	constructor(projectRoot, onUpdate) {
 		this.projectRoot = projectRoot;
-		this.testMode = testMode;
 		this.onUpdate = onUpdate;
 		this.watcher = null;
 
@@ -314,7 +313,7 @@ class FileWatcher {
 			throw new Error('File watcher dependency (chokidar) not available');
 		}
 
-		const taskMasterDir = this.testMode ? '.taskmaster-test' : '.taskmaster';
+		const taskMasterDir = '.taskmaster';
 		const watchPaths = [
 			path.join(this.projectRoot, taskMasterDir, 'tasks/**/*.json'),
 			path.join(this.projectRoot, 'web/src/**/*'),
