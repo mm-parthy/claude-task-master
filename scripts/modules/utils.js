@@ -64,6 +64,45 @@ function resolveEnvVariable(key, session = null, projectRoot = null) {
 	return undefined;
 }
 
+// --- Tag-Aware Path Resolution Utility ---
+/**
+ * Resolves a file path to be tag-aware, following the pattern used by other commands.
+ * For non-master tags, appends _tagname before the file extension.
+ * @param {string} basePath - The base file path (e.g., '.taskmaster/reports/task-complexity-report.json')
+ * @param {string|null} tag - The tag name (null, undefined, or 'master' uses base path)
+ * @param {string} [projectRoot='.'] - The project root directory
+ * @returns {string} The resolved file path
+ */
+function getTagAwareFilePath(basePath, tag, projectRoot = '.') {
+	if (!tag || tag === 'master') {
+		return path.join(projectRoot, basePath);
+	}
+
+	// For non-master tags, insert _tagname before the file extension
+	// Get the base filename (last part after /)
+	const pathParts = basePath.split('/');
+	const filename = pathParts[pathParts.length - 1];
+	const dirPath = pathParts.slice(0, -1).join('/');
+
+	// Find the last dot in the filename (not in directory names)
+	const extIndex = filename.lastIndexOf('.');
+	if (extIndex === -1) {
+		// No extension found in filename, just append the tag
+		const taggedFilename = `${filename}_${tag}`;
+		const taggedPath = dirPath
+			? `${dirPath}/${taggedFilename}`
+			: taggedFilename;
+		return path.join(projectRoot, taggedPath);
+	}
+
+	// Insert tag before the extension in filename
+	const nameWithoutExt = filename.substring(0, extIndex);
+	const extension = filename.substring(extIndex);
+	const taggedFilename = `${nameWithoutExt}_${tag}${extension}`;
+	const taggedPath = dirPath ? `${dirPath}/${taggedFilename}` : taggedFilename;
+	return path.join(projectRoot, taggedPath);
+}
+
 // --- Project Root Finding Utility ---
 /**
  * Recursively searches upwards for project root starting from a given directory.
@@ -1338,6 +1377,7 @@ export {
 	addComplexityToTask,
 	resolveEnvVariable,
 	findProjectRoot,
+	getTagAwareFilePath,
 	aggregateTelemetry,
 	getCurrentTag,
 	resolveTag,
