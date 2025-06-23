@@ -1,33 +1,49 @@
 # Task Master Web API - Modular E2E Tests
 
-This directory contains modular End-to-End (E2E) tests for the Task Master Web API. The tests have been split from a single comprehensive test file into focused, independent test suites for better maintainability and targeted testing.
+> **Looking for web server/frontend build and development instructions?**  
+> See [web/Readme.md](../../web/Readme.md).
+
+This directory contains modular End-to-End (E2E) tests for the Task Master Web API. The tests are organized into focused, independent test suites for better maintainability and targeted testing.
 
 **Location**: `tests/e2e/web/` - All web API tests are organized in this subfolder for better organization.
 
 ## 🏗️ Test Structure
 
-### Test Files Overview
+### Test Suites (Modular Runner)
 
-| Test Suite                | File                            | Description                                     | Endpoints Tested |
-| ------------------------- | ------------------------------- | ----------------------------------------------- | ---------------- |
-| **Core Operations**       | `test_core_task_operations.sh`  | Basic CRUD operations on tasks                  | 11 endpoints     |
-| **Subtask Operations**    | `test_subtask_operations.sh`    | Subtask creation, updating, and management      | 3 endpoints      |
-| **Task Expansion**        | `test_task_expansion.sh`        | AI-powered task expansion functionality         | 4 endpoints      |
-| **Dependency Management** | `test_dependency_management.sh` | Dependency creation, validation, and management | 4 endpoints      |
-| **Task Movement**         | `test_task_movement.sh`         | Task movement and reorganization                | 2 endpoints      |
-| **Tag Management**        | `test_tag_management.sh`        | Tag creation, modification, and management      | 6 endpoints      |
-| **Analysis & Research**   | `test_analysis_research.sh`     | AI-powered analysis and research functionality  | 3 endpoints      |
-| **Error Handling**        | `test_error_handling.sh`        | Comprehensive error handling and validation     | All endpoints    |
+The main modular test runner (`run_modular_tests.sh`) recognizes the following suites:
 
-### Shared Utilities
+| Test Suite Name | Script File                   | Description                                     |
+| --------------- | ----------------------------- | ----------------------------------------------- |
+| core            | test_core_task_operations.sh  | Basic CRUD operations on tasks                  |
+| subtasks        | test_subtask_operations.sh    | Subtask creation, updating, and management      |
+| expansion       | test_task_expansion.sh        | AI-powered task expansion functionality         |
+| dependencies    | test_dependency_management.sh | Dependency creation, validation, and management |
+| movement        | test_task_movement.sh         | Task movement and reorganization                |
+| tags            | test_tag_management.sh        | Tag creation, modification, and management      |
+| analysis        | test_analysis_research.sh     | AI-powered analysis and research functionality  |
+| errors          | test_error_handling.sh        | Comprehensive error handling and validation     |
 
-- **`shared/test-utils.sh`**: Common functions and utilities used across all test files
-  - Server setup and validation
-  - JSON response checking
-  - HTTP status code validation
-  - Test data creation and cleanup
-  - Unique ID generation
-  - Error handling helpers
+These are the suites you can run with the modular runner and are listed with `--list`.
+
+### Additional Test Scripts (Direct Execution)
+
+The following scripts exist but are **not** included in the main modular runner. They can be run directly for additional coverage:
+
+| Script File                      | Description                                                      |
+| -------------------------------- | ---------------------------------------------------------------- |
+| test_web_server_functionality.sh | Comprehensive E2E for web server CLI (daemon, status, websocket) |
+| test_web_basic_functionality.sh  | Basic web server CLI E2E (start/stop/status)                     |
+| test_web_error_handling.sh       | Web server CLI error handling (port conflicts, invalid ports)    |
+| test_robustness_improvements.sh  | Robustness, health monitoring, tag validation, error recovery    |
+
+**To run these scripts:**
+
+```bash
+./tests/e2e/web/test_web_server_functionality.sh
+# or
+./tests/e2e/web/test_robustness_improvements.sh
+```
 
 ## 🚀 Quick Start
 
@@ -37,10 +53,10 @@ This directory contains modular End-to-End (E2E) tests for the Task Master Web A
 
    ```bash
    # Option 1: Using npm script
-   npm run start:web -- --port 3002 --test-mode --daemon
+   npm run start:web
 
    # Option 2: Direct node command
-   node web/server.js --port=3002 --test-mode
+   node web/server.js --port=3002
    ```
 
 2. **Verify server is running**:
@@ -383,12 +399,6 @@ The modular structure provides several advantages over the original monolithic t
 - **Better Debugging**: Isolate issues to specific functional areas
 - **Maintenance**: Easier to update and maintain individual test areas
 - **CI/CD Integration**: Better integration with continuous integration pipelines
-
-### Backward Compatibility
-
-- The original `test_web_api_endpoints.sh` file remains available
-- All original functionality is preserved across the modular tests
-- Shared utilities ensure consistent behavior
 
 ### Migration Path
 

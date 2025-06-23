@@ -1,5 +1,8 @@
 # Testing Guide for Web commands
 
+> **Looking for E2E test suite and test runner documentation?**  
+> See [tests/e2e/web/README.md](../tests/e2e/web/README.md).
+
 ## E2E Test Development Guidelines
 
 ### Command Execution Rules
@@ -75,42 +78,65 @@ error_output=$(expect_failure 10 "zero-port" $CLI_CMD web-start --port=0)
 
 This infrastructure ensures all E2E tests complete reliably without manual intervention.
 
-## Web Server E2E Tests
+## Web Server Build & Development
 
-The project includes comprehensive E2E tests for web server functionality:
+This guide provides instructions for building, running, and developing the web server and frontend components of Task Master.
 
-### Available Web Tests
+<!-- For E2E and API test suite details, see the link at the top of this file. -->
 
-- `test_web_basic_functionality.sh`: Basic server start/stop and status functionality
-- `test_web_error_handling.sh`: Error scenarios and edge cases
-- `test_web_server_functionality.sh`: Comprehensive functionality testing
+### Development
 
-### Running Web Server Tests
-
-To run the comprehensive web server test:
+To start the local development server for the frontend, which includes hot-reloading:
 
 ```bash
-./tests/e2e/test_web_server_functionality.sh
+npm run dev:web
 ```
 
-### Web Test Coverage
+This command uses Vite to serve the frontend on a local port (typically `http://localhost:5173`). The underlying web API server is not started with this command; it is intended for frontend development in isolation.
 
-The comprehensive web server test covers:
+### Building for Production
 
-- **Server Startup**: Daemon mode, foreground mode, configuration options
-- **HTTP Responses**: Endpoint testing, static file serving, status codes
-- **WebSocket Functionality**: Connection establishment, message handling (where available)
-- **File Watching**: Change detection and client notification
-- **Configuration Options**: `--skip-websocket`, `--skip-watcher`, custom host/port
-- **Concurrent Connections**: Multiple simultaneous connection handling
-- **Shutdown Operations**: Graceful shutdown and force stop
-- **Status Tracking**: Server lifecycle monitoring
+To create a production-ready build of the frontend assets:
 
-### Test Infrastructure
+```bash
+npm run build:web
+```
 
-Web tests use unique ports (3008-3010) to avoid conflicts and include:
+This will compile the React code and output the static assets to the `web/dist` directory.
 
-- Comprehensive cleanup with trap handlers
-- Cross-platform timeout utilities
-- Cost tracking for AI operations
-- Structured logging with detailed output
+### Running in Production Mode
+
+To run the Node.js web server that serves the production-built frontend assets:
+
+1.  **Build the assets first**:
+
+    ```bash
+    npm run build:web
+    ```
+
+2.  **Start the server**:
+    ```bash
+    npm run start:web
+    ```
+
+This starts the Express server (`web/server.js`), which serves the static files from `web/dist` and handles API requests.
+
+### Previewing the Production Build
+
+After building the assets, you can preview the production site without running the full Node.js server using Vite's preview command:
+
+```bash
+npm run preview:web
+```
+
+This is useful for quickly verifying that the production build works as expected.
+
+### Scripts Overview
+
+| Command               | Description                                                             | Environment   |
+| --------------------- | ----------------------------------------------------------------------- | ------------- |
+| `npm run dev:web`     | Starts the Vite dev server for frontend development with hot-reloading. | `development` |
+| `npm run build:web`   | Builds the frontend assets for production into `web/dist`.              | `production`  |
+| `npm run start:web`   | Starts the Node.js/Express server to serve production assets.           | `production`  |
+| `npm run preview:web` | Serves the `web/dist` folder to preview the production build locally.   | `production`  |
+| `npm run clean:web`   | Removes the `web/dist` directory.                                       | -             |
