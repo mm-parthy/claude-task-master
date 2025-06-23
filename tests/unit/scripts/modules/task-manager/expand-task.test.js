@@ -649,6 +649,61 @@ describe('expandTask', () => {
 		});
 	});
 
+	describe('Complexity Report Integration (Tag-Specific)', () => {
+		test('should use tag-specific complexity report when available', async () => {
+			// Arrange
+			const tasksPath = 'tasks/tasks.json';
+			const taskId = '1'; // Task in feature-branch
+			const context = {
+				mcpLog: createMcpLogMock(),
+				projectRoot: '/mock/project/root',
+				tag: 'feature-branch'
+			};
+
+			// Stub fs.existsSync to simulate complexity report exists for this tag
+			const existsSpy = jest
+				.spyOn(fs, 'existsSync')
+				.mockImplementation((filepath) =>
+					filepath.endsWith('task-complexity-report_feature-branch.json')
+				);
+
+			// Stub readJSON to return complexity report when reading the report path
+			readJSON.mockImplementation((filepath, projectRootParam, tagParam) => {
+				if (filepath.includes('task-complexity-report_feature-branch.json')) {
+					return {
+						complexityAnalysis: [
+							{
+								taskId: 1,
+								complexityScore: 8,
+								recommendedSubtasks: 5,
+								reasoning: 'Needs five detailed steps',
+								expansionPrompt: 'Please break this task into 5 parts'
+							}
+						]
+					};
+				}
+				// Default tasks data for tasks.json
+				const sampleTasksCopy = JSON.parse(JSON.stringify(sampleTasks));
+				const selectedTag = tagParam || 'master';
+				return {
+					...sampleTasksCopy[selectedTag],
+					tag: selectedTag,
+					_rawTaggedData: sampleTasksCopy
+				};
+			});
+
+			// Act
+			await expandTask(tasksPath, taskId, undefined, false, '', context, false);
+
+			// Assert - generateTextService called with systemPrompt for 5 subtasks
+			const callArg = generateTextService.mock.calls[0][0];
+			expect(callArg.systemPrompt).toContain('Generate exactly 5 subtasks');
+
+			// Clean up stub
+			existsSpy.mockRestore();
+		});
+	});
+
 	describe('Error Handling', () => {
 		test('should handle non-existent task ID', async () => {
 			// Arrange
