@@ -24,20 +24,15 @@
 		"mcp-server": "node mcp-server/server.js",
 		"format-check": "biome format .",
 		"format": "biome format . --write",
-		"build": "npm run build:cli && npm run build:web",
+		"build": "npm run build:cli",
 		"build:cli": "echo 'CLI build complete - no build step required for Node.js'",
 		"build:web": "cross-env NODE_ENV=production vite build",
-		"build:web:dev": "cross-env NODE_ENV=development vite build",
 		"dev:web": "cross-env NODE_ENV=development vite dev",
 		"preview:web": "vite preview",
 		"clean:web": "rimraf web/dist",
 		"start:web": "node web/server.js",
 		"start:web:dev": "cross-env NODE_ENV=development node web/server.js",
-		"start:web:prod": "cross-env NODE_ENV=production node web/server.js",
-		"start:web:test": "node web/server.js --test-mode --daemon --port=3002",
-		"start:web:test-dev": "cross-env NODE_ENV=development node web/server.js --test-mode",
-		"web:full-dev": "npm run clean:web && npm run build:web:dev && npm run start:web:dev",
-		"web:full-prod": "npm run clean:web && npm run build:web && npm run start:web:prod"
+		"start:web:test": "node web/server.js --daemon --port=3002"
 	},
 	"keywords": [
 		"claude",

@@ -517,8 +517,8 @@ export async function initializeWebInterface(options = {}) {
 	const apiRouter = createApiRouter(projectRoot);
 	app.use('/api', apiRouter);
 
-	// Serve static assets from web/src directory for the React frontend
-	const staticPath = path.join(__dirname, 'src');
+	// Serve static assets from web/dist directory for the React frontend
+	const staticPath = path.join(__dirname, 'dist');
 	console.log(`Serving static files from: ${staticPath}`);
 	app.use('/', serveStatic(staticPath));
 
