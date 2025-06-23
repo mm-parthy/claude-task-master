@@ -255,12 +255,22 @@ describe('updateTasks', () => {
 		const mockTasksPath = '/mock/path/tasks.json';
 		const mockFromId = 1;
 		const mockPrompt = 'Update master tag tasks';
-		
+
 		const mockTaggedData = {
 			master: {
 				tasks: [
-					{ id: 1, title: 'Master Task', status: 'pending', details: 'Old details' },
-					{ id: 2, title: 'Master Task 2', status: 'done', details: 'Done task' }
+					{
+						id: 1,
+						title: 'Master Task',
+						status: 'pending',
+						details: 'Old details'
+					},
+					{
+						id: 2,
+						title: 'Master Task 2',
+						status: 'done',
+						details: 'Done task'
+					}
 				],
 				metadata: {
 					created: '2024-01-01T00:00:00.000Z',
@@ -269,7 +279,12 @@ describe('updateTasks', () => {
 			},
 			'feature-branch': {
 				tasks: [
-					{ id: 1, title: 'Feature Task', status: 'pending', details: 'Feature work' }
+					{
+						id: 1,
+						title: 'Feature Task',
+						status: 'pending',
+						details: 'Feature work'
+					}
 				],
 				metadata: {
 					created: '2024-01-02T00:00:00.000Z',
