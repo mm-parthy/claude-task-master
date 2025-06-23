@@ -3,6 +3,10 @@
  */
 import { jest } from '@jest/globals';
 import fs from 'fs';
+import {
+	createGetTagAwareFilePathMock,
+	createSlugifyTagForFilePathMock
+} from './setup.js';
 
 // Mock the dependencies before importing the module under test
 jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
@@ -36,6 +40,8 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 		}
 		return allTasks;
 	}),
+	getTagAwareFilePath: createGetTagAwareFilePathMock(),
+	slugifyTagForFilePath: createSlugifyTagForFilePathMock(),
 	readComplexityReport: jest.fn(),
 	markMigrationForNotice: jest.fn(),
 	performCompleteTagMigration: jest.fn(),
