@@ -142,7 +142,7 @@ async function addSubtask(
 		// Generate task files if requested
 		if (generateFiles) {
 			log('info', 'Regenerating task files...');
-			// await generateTaskFiles(tasksPath, path.dirname(tasksPath), context);
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath), context);
 		}
 
 		return newSubtask;
