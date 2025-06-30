@@ -1,5 +1,5 @@
 import path from 'path';
-import * as fs from 'fs';
+import fs from 'fs';
 import chalk from 'chalk';
 
 import { log, readJSON } from '../utils.js';

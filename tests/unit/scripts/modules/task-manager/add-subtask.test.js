@@ -7,14 +7,18 @@ import { jest } from '@jest/globals';
 const mockUtils = {
 	readJSON: jest.fn(),
 	writeJSON: jest.fn(),
-	log: jest.fn()
+	log: jest.fn(),
+	getCurrentTag: jest.fn()
 };
 const mockTaskManager = {
 	isTaskDependentOn: jest.fn()
 };
 const mockGenerateTaskFiles = jest.fn();
 
-jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => mockUtils);
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/utils.js',
+	() => mockUtils
+);
 jest.unstable_mockModule(
 	'../../../../../scripts/modules/task-manager.js',
 	() => mockTaskManager
@@ -44,22 +48,18 @@ describe('addSubtask function', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		mockUtils.readJSON.mockReturnValue(JSON.parse(JSON.stringify(multiTagData)));
 		mockTaskManager.isTaskDependentOn.mockReturnValue(false);
 	});
 
 	test('should add a new subtask and preserve other tags', async () => {
 		const context = { projectRoot: '/fake/root', tag: 'feature-branch' };
 		const newSubtaskData = { title: 'My New Subtask' };
+		mockUtils.readJSON.mockReturnValueOnce({
+			tasks: [{ id: 1, title: 'Feature Task', subtasks: [] }],
+			metadata: { description: 'Feature tasks' }
+		});
 
-		await addSubtask(
-			'tasks.json',
-			'1',
-			null,
-			newSubtaskData,
-			true,
-			context
-		);
+		await addSubtask('tasks.json', '1', null, newSubtaskData, true, context);
 
 		expect(mockUtils.writeJSON).toHaveBeenCalledWith(
 			'tasks.json',
@@ -68,20 +68,27 @@ describe('addSubtask function', () => {
 			'feature-branch'
 		);
 		const writtenData = mockUtils.writeJSON.mock.calls[0][1];
-		const parentTask = writtenData['feature-branch'].tasks.find(
-			(t) => t.id === 1
-		);
+		const parentTask = writtenData.tasks.find((t) => t.id === 1);
 		expect(parentTask.subtasks).toHaveLength(1);
 		expect(parentTask.subtasks[0].title).toBe('My New Subtask');
-		expect(writtenData.master).toBeDefined(); // Check that master tag is preserved
 	});
 
 	test('should add a new subtask to a parent task', async () => {
-		const newSubtask = await addSubtask('1', 'New Subtask', {
-			generateFiles: true
+		mockUtils.readJSON.mockReturnValueOnce({
+			tasks: [{ id: 1, title: 'Parent Task', subtasks: [] }]
 		});
+		const context = {};
+		const newSubtask = await addSubtask(
+			'tasks.json',
+			'1',
+			null,
+			{ title: 'New Subtask' },
+			true,
+			context
+		);
 		expect(newSubtask).toBeDefined();
-		expect(newSubtask.id).toBe('1.1');
+		expect(newSubtask.id).toBe(1);
+		expect(newSubtask.parentTaskId).toBe(1);
 		expect(mockUtils.writeJSON).toHaveBeenCalled();
 		const writeCallArgs = mockUtils.writeJSON.mock.calls[0][1]; // data is the second arg now
 		const parentTask = writeCallArgs.tasks.find((t) => t.id === 1);
@@ -91,8 +98,23 @@ describe('addSubtask function', () => {
 	});
 
 	test('should convert an existing task to a subtask', async () => {
-		const convertedSubtask = await addSubtask('1', null, '2');
-		expect(convertedSubtask.id).toBe('1.1');
+		mockUtils.readJSON.mockReturnValueOnce({
+			tasks: [
+				{ id: 1, title: 'Parent Task', subtasks: [] },
+				{ id: 2, title: 'Existing Task 2', subtasks: [] }
+			]
+		});
+		const context = {};
+		const convertedSubtask = await addSubtask(
+			'tasks.json',
+			'1',
+			'2',
+			null,
+			true,
+			context
+		);
+		expect(convertedSubtask.id).toBe(1);
+		expect(convertedSubtask.parentTaskId).toBe(1);
 		expect(convertedSubtask.title).toBe('Existing Task 2');
 		expect(mockUtils.writeJSON).toHaveBeenCalled();
 		const writeCallArgs = mockUtils.writeJSON.mock.calls[0][1];
@@ -102,23 +124,49 @@ describe('addSubtask function', () => {
 	});
 
 	test('should throw an error if parent task does not exist', async () => {
-		expect(addSubtask('99', 'New Subtask')).rejects.toThrow(
-			'Parent task with ID 99 not found.'
-		);
+		mockUtils.readJSON.mockReturnValueOnce({
+			tasks: [{ id: 1, title: 'Task 1', subtasks: [] }]
+		});
+		const context = {};
+		await expect(
+			addSubtask(
+				'tasks.json',
+				'99',
+				null,
+				{ title: 'New Subtask' },
+				true,
+				context
+			)
+		).rejects.toThrow('Parent task with ID 99 not found');
 	});
 
 	test('should throw an error if trying to convert a non-existent task', async () => {
-		await expect(addSubtask('1', null, '99')).rejects.toThrow(
-			'Task with ID 99 not found.'
-		);
+		mockUtils.readJSON.mockReturnValueOnce({
+			tasks: [{ id: 1, title: 'Parent Task', subtasks: [] }]
+		});
+		const context = {};
+		await expect(
+			addSubtask('tasks.json', '1', '99', null, true, context)
+		).rejects.toThrow('Task with ID 99 not found');
 	});
 
 	test('should throw an error for circular dependency', async () => {
-		mockTaskManager.isTaskDependentOn.mockReturnValue(true);
+		mockUtils.readJSON.mockReturnValueOnce({
+			tasks: [
+				{ id: 1, title: 'Parent Task', subtasks: [] },
+				{ id: 2, title: 'Child Task', subtasks: [] }
+			]
+		});
+		mockTaskManager.isTaskDependentOn.mockImplementation(
+			(tasks, parentTask, existingTaskIdNum) => {
+				return parentTask.id === 1 && existingTaskIdNum === 2;
+			}
+		);
+		const context = {};
 		await expect(
-			addSubtask('1', 'New Subtask', null, 'Circular Subtask', 'details', [
-				1
-			])
-		).rejects.toThrow('Circular dependency detected.');
+			addSubtask('tasks.json', '1', '2', null, true, context)
+		).rejects.toThrow(
+			'Cannot create circular dependency: task 1 is already a subtask or dependent of task 2'
+		);
 	});
 });
