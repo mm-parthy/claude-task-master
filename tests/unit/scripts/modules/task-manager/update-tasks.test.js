@@ -159,7 +159,7 @@ describe('updateTasks', () => {
 			mockFromId,
 			mockPrompt,
 			false, // research
-			{ projectRoot: '/mock/path' }, // context
+			{ projectRoot: '/mock/path', tag: 'master' }, // context
 			'json' // output format
 		);
 
@@ -229,7 +229,7 @@ describe('updateTasks', () => {
 			mockFromId,
 			mockPrompt,
 			false,
-			{ projectRoot: '/mock/path' },
+			{ projectRoot: '/mock/path', tag: 'master' },
 			'json'
 		);
 

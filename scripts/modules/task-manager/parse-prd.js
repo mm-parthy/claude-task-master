@@ -75,7 +75,7 @@ async function parsePRD(prdPath, tasksPath, numTasks, options = {}) {
 	const outputFormat = isMCP ? 'json' : 'text';
 
 	// Use the provided tag, or the current active tag, or default to 'master'
-	const targetTag = tag || getCurrentTag(projectRoot) || 'master';
+	const targetTag = tag;
 
 	const logFn = mcpLog
 		? mcpLog
