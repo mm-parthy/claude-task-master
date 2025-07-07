@@ -1408,7 +1408,8 @@ function registerCommands(programInstance) {
 			});
 
 			const outputDir = options.output;
-			const tag = options.tag;
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			console.log(
 				chalk.blue(`Generating task files from: ${taskMaster.getTasksPath()}`)
@@ -1449,7 +1450,6 @@ function registerCommands(programInstance) {
 
 			const taskId = options.id;
 			const status = options.status;
-			const tag = options.tag;
 
 			if (!taskId || !status) {
 				console.error(chalk.red('Error: Both --id and --status are required'));
@@ -1465,11 +1465,10 @@ function registerCommands(programInstance) {
 
 				process.exit(1);
 			}
-
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 			// Resolve tag using standard pattern and show current tag context
-			const resolvedTag =
-				tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
-			displayCurrentTagIndicator(resolvedTag);
+			displayCurrentTagIndicator(tag);
 
 			console.log(
 				chalk.blue(`Setting status of task(s) ${taskId} to: ${status}`)
@@ -1535,8 +1534,7 @@ function registerCommands(programInstance) {
 				taskMaster.getComplexityReportPath(),
 				withSubtasks,
 				'text',
-				tag,
-				{ projectRoot: taskMaster.getProjectRoot() }
+				{ projectRoot: taskMaster.getProjectRoot(), tag }
 			);
 		});
 
@@ -1571,12 +1569,12 @@ function registerCommands(programInstance) {
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
-			const tag = options.tag;
+
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
-			displayCurrentTagIndicator(
-				tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master'
-			);
+			displayCurrentTagIndicator(tag);
 
 			if (options.all) {
 				// --- Handle expand --all ---
@@ -2113,17 +2111,17 @@ ${result.result}
 		.action(async (options) => {
 			const taskIds = options.id;
 			const all = options.all;
-			const tag = options.tag;
 
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
 
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+
 			// Show current tag context
-			displayCurrentTagIndicator(
-				tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master'
-			);
+			displayCurrentTagIndicator(tag);
 
 			if (!taskIds && !all) {
 				console.error(
@@ -2225,9 +2223,7 @@ ${result.result}
 			const projectRoot = taskMaster.getProjectRoot();
 
 			// Show current tag context
-			displayCurrentTagIndicator(
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master'
-			);
+			displayCurrentTagIndicator(tag);
 
 			let manualTaskData = null;
 			if (isManualCreation) {
@@ -2263,7 +2259,7 @@ ${result.result}
 
 			const context = {
 				projectRoot,
-				tag: options.tag,
+				tag,
 				commandName: 'add-task',
 				outputType: 'cli'
 			};
@@ -2309,22 +2305,29 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tag = options.tag;
+			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
+			const reportPath = options.report;
 
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
 				tasksPath: options.file || true
 			});
 
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+
+			const context = {
+				projectRoot: taskMaster.getProjectRoot(),
+				tag
+			};
+
 			// Show current tag context
-			displayCurrentTagIndicator(
-				tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master'
-			);
+			displayCurrentTagIndicator(tag);
 
 			await displayNextTask(
 				taskMaster.getTasksPath(),
 				taskMaster.getComplexityReportPath(),
-				{ projectRoot: taskMaster.getProjectRoot(), tag }
+				context
 			);
 		});
 
@@ -2364,12 +2367,11 @@ ${result.result}
 
 			const idArg = taskId || options.id;
 			const statusFilter = options.status;
-			const tag = options.tag;
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			// Show current tag context
-			displayCurrentTagIndicator(
-				tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master'
-			);
+			displayCurrentTagIndicator(tag);
 
 			if (!idArg) {
 				console.error(chalk.red('Error: Please provide a task ID'));
@@ -2398,8 +2400,7 @@ ${result.result}
 					taskIds[0],
 					taskMaster.getComplexityReportPath(),
 					statusFilter,
-					tag,
-					{ projectRoot: taskMaster.getProjectRoot() }
+					{ projectRoot: taskMaster.getProjectRoot(), tag }
 				);
 			}
 		});
@@ -3773,7 +3774,8 @@ Examples:
 
 			const sourceId = options.from;
 			const destinationId = options.to;
-			const tag = options.tag;
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			if (!sourceId || !destinationId) {
 				console.error(
