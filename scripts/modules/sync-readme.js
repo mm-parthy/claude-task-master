@@ -104,7 +104,8 @@ export async function syncTasksToReadme(projectRoot = null, options = {}) {
 			status,
 			null,
 			withSubtasks,
-			'markdown-readme'
+			'markdown-readme',
+			{ projectRoot }
 		);
 
 		if (!tasksOutput) {

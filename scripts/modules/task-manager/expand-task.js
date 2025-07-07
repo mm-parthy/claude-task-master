@@ -290,6 +290,8 @@ function parseSubtasksFromText(
  * @param {Object} context - Context object containing session and mcpLog.
  * @param {Object} [context.session] - Session object from MCP.
  * @param {Object} [context.mcpLog] - MCP logger object.
+ * @param {string} [context.projectRoot] - Project root path
+ * @param {string} [context.tag] - Tag for the task
  * @param {boolean} [force=false] - If true, replace existing subtasks; otherwise, append.
  * @returns {Promise<Object>} The updated parent task object with new subtasks.
  * @throws {Error} If task not found, AI service fails, or parsing fails.
@@ -350,7 +352,7 @@ async function expandTask(
 		// --- Context Gathering ---
 		let gatheredContext = '';
 		try {
-			const contextGatherer = new ContextGatherer(projectRoot);
+			const contextGatherer = new ContextGatherer(projectRoot, tag);
 			const allTasksFlat = flattenTasksWithSubtasks(data.tasks);
 			const fuzzySearch = new FuzzyTaskSearch(allTasksFlat, 'expand-task');
 			const searchQuery = `${task.title} ${task.description}`;
