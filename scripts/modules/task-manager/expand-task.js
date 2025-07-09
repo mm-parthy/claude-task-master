@@ -391,7 +391,7 @@ async function expandTask(
 		let taskAnalysis = null;
 
 		logger.info(
-			`Looking for complexity report at: ${complexityReportPath}${tag && tag !== 'master' ? ` (tag-specific for '${tag}')` : ''}`
+			`Looking for complexity report at: ${complexityReportPath}${tag !== 'master' ? ` (tag-specific for '${tag}')` : ''}`
 		);
 
 		try {
@@ -582,7 +582,7 @@ async function expandTask(
 		// --- End Change: Append instead of replace ---
 
 		data.tasks[taskIndex] = task; // Assign the modified task back
-		writeJSON(tasksPath, data, projectRoot, tag);
+		writeJSON(tasksPath, data, projectRoot, resolvedTag);
 		// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
 
 		// Display AI Usage Summary for CLI
