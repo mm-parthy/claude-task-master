@@ -59,8 +59,7 @@ export async function listTasksDirect(args, log, context = {}) {
 				reportPath,
 				withSubtasksFilter,
 				'json',
-				tag, // tag
-				{ projectRoot, tag, session } // context
+				{ projectRoot, session, tag }
 			);
 
 			if (!resultData || !resultData.tasks) {

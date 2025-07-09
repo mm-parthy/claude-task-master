@@ -4199,6 +4199,10 @@ Examples:
 			'-s, --status <status>',
 			'Show only tasks matching this status (e.g., pending, done)'
 		)
+		.option(
+			'-t, --tag <tag>',
+			'Tag to use for the task list (default: master)'
+		)
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
@@ -4207,6 +4211,9 @@ Examples:
 
 			const withSubtasks = options.withSubtasks || false;
 			const status = options.status || null;
+
+			const tag =
+				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
 
 			console.log(
 				chalk.blue(
@@ -4217,7 +4224,8 @@ Examples:
 			const success = await syncTasksToReadme(taskMaster.getProjectRoot(), {
 				withSubtasks,
 				status,
-				tasksPath: taskMaster.getTasksPath()
+				tasksPath: taskMaster.getTasksPath(),
+				tag
 			});
 
 			if (!success) {
