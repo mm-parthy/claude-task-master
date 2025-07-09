@@ -75,18 +75,12 @@ export async function setTaskStatusDirect(args, log, context = {}) {
 		enableSilentMode(); // Enable silent mode before calling core function
 		try {
 			// Call the core function
-			await setTaskStatus(
-				tasksPath,
-				taskId,
-				newStatus,
-				{
-					mcpLog: log,
-					projectRoot,
-					session,
-					tag
-				},
+			await setTaskStatus(tasksPath, taskId, newStatus, {
+				mcpLog: log,
+				projectRoot,
+				session,
 				tag
-			);
+			});
 
 			log.info(`Successfully set task ${taskId} status to ${newStatus}`);
 
