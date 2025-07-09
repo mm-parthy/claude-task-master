@@ -4203,10 +4203,7 @@ Examples:
 			'-s, --status <status>',
 			'Show only tasks matching this status (e.g., pending, done)'
 		)
-		.option(
-			'-t, --tag <tag>',
-			'Tag to use for the task list (default: master)'
-		)
+		.option('-t, --tag <tag>', 'Tag to use for the task list (default: master)')
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
