@@ -17,8 +17,7 @@ import {
 	truncate,
 	isSilentMode,
 	findProjectRoot,
-	flattenTasksWithSubtasks,
-	getCurrentTag
+	flattenTasksWithSubtasks
 } from '../utils.js';
 import { generateTextService } from '../ai-services-unified.js';
 import { getDebugFlag } from '../config-manager.js';
@@ -335,7 +334,11 @@ async function updateSubtaskById(
 		}
 
 		report('success', `Successfully updated subtask ${subtaskId}`);
-		// await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		// Updated  function call to make sure if uncommented it will generate the task files for the updated subtask based on the tag
+		// await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
+		// 	tag: tag,
+		// 	projectRoot: projectRoot
+		// });
 
 		if (outputFormat === 'text') {
 			if (loadingIndicator) {
