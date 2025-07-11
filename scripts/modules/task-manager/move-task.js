@@ -48,7 +48,10 @@ async function moveTask(
 
 		// Generate files once at the end if requested
 		if (generateFiles) {
-			await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+			await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
+				tag: tag,
+				projectRoot: projectRoot
+			});
 		}
 
 		return {
@@ -110,7 +113,10 @@ async function moveTask(
 	writeJSON(tasksPath, rawData, options.projectRoot, tag);
 
 	if (generateFiles) {
-		await generateTaskFiles(tasksPath, path.dirname(tasksPath));
+		await generateTaskFiles(tasksPath, path.dirname(tasksPath), {
+			tag: tag,
+			projectRoot: projectRoot
+		});
 	}
 
 	return result;
