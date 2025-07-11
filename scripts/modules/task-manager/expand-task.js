@@ -305,7 +305,13 @@ async function expandTask(
 	context = {},
 	force = false
 ) {
-	const { session, mcpLog, projectRoot: contextProjectRoot, tag } = context;
+	const {
+		session,
+		mcpLog,
+		projectRoot: contextProjectRoot,
+		tag,
+		complexityReportPath
+	} = context;
 	const outputFormat = mcpLog ? 'json' : 'text';
 
 	// Determine projectRoot: Use from context if available, otherwise derive from tasksPath
@@ -381,13 +387,6 @@ async function expandTask(
 		// --- Complexity Report Integration ---
 		let finalSubtaskCount;
 		let complexityReasoningContext = '';
-
-		// Use tag-aware complexity report path
-		const complexityReportPath = getTagAwareFilePath(
-			COMPLEXITY_REPORT_FILE,
-			tag,
-			projectRoot
-		);
 		let taskAnalysis = null;
 
 		logger.info(
