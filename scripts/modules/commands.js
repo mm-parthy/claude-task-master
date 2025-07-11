@@ -1562,6 +1562,11 @@ function registerCommands(programInstance) {
 			'Path to the tasks file (relative to project root)',
 			TASKMASTER_TASKS_FILE // Allow file override
 		) // Allow file override
+		.option(
+			'-cr, --complexity-report <file>',
+			'Path to the report file',
+			COMPLEXITY_REPORT_FILE
+		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			// Initialize TaskMaster
@@ -1571,6 +1576,9 @@ function registerCommands(programInstance) {
 
 			if (options.tag) {
 				initOptions.tag = options.tag;
+			}
+			if (options.complexityReport) {
+				initOptions.complexityReportPath = options.complexityReport;
 			}
 
 			const taskMaster = initTaskMaster(initOptions);
@@ -1591,7 +1599,11 @@ function registerCommands(programInstance) {
 						options.research, // Pass research flag
 						options.prompt, // Pass additional context
 						options.force, // Pass force flag
-						{ projectRoot: taskMaster.getProjectRoot(), tag } // Pass context with projectRoot and tag
+						{
+							projectRoot: taskMaster.getProjectRoot(),
+							tag,
+							complexityReportPath: taskMaster.getComplexityReportPath()
+						} // Pass context with projectRoot and tag
 						// outputFormat defaults to 'text' in expandAllTasks for CLI
 					);
 				} catch (error) {
@@ -1618,7 +1630,11 @@ function registerCommands(programInstance) {
 						options.num,
 						options.research,
 						options.prompt,
-						{ projectRoot: taskMaster.getProjectRoot(), tag }, // Pass context with projectRoot and tag
+						{
+							projectRoot: taskMaster.getProjectRoot(),
+							tag,
+							complexityReportPath: taskMaster.getComplexityReportPath()
+						}, // Pass context with projectRoot and tag
 						options.force // Pass the force flag down
 					);
 					// expandTask logs its own success/failure for single task
@@ -1692,7 +1708,7 @@ function registerCommands(programInstance) {
 			// Show current tag context
 			displayCurrentTagIndicator(targetTag);
 
-			// Tag-aware output file naming: master -> task-complexity-report.json, other tags -> task-complexity-report_tagname.json
+			// Use user's explicit output path if provided, otherwise use tag-aware default
 			const outputPath = taskMaster.getComplexityReportPath();
 
 			console.log(

@@ -179,17 +179,33 @@ export function initTaskMaster(overrides = {}) {
 		pathType,
 		override,
 		defaultPaths = [],
-		basePath = null
+		basePath = null,
+		createParentDirs = false
 	) => {
 		if (typeof override === 'string') {
 			const resolvedPath = path.isAbsolute(override)
 				? override
 				: path.resolve(basePath || process.cwd(), override);
 
-			if (!fs.existsSync(resolvedPath)) {
-				throw new Error(
-					`${pathType} override path does not exist: ${resolvedPath}`
-				);
+			if (createParentDirs) {
+				// For output paths, create parent directory if it doesn't exist
+				const parentDir = path.dirname(resolvedPath);
+				if (!fs.existsSync(parentDir)) {
+					try {
+						fs.mkdirSync(parentDir, { recursive: true });
+					} catch (error) {
+						throw new Error(
+							`Could not create directory for ${pathType}: ${parentDir}. Error: ${error.message}`
+						);
+					}
+				}
+			} else {
+				// Original validation logic
+				if (!fs.existsSync(resolvedPath)) {
+					throw new Error(
+						`${pathType} override path does not exist: ${resolvedPath}`
+					);
+				}
 			}
 			return resolvedPath;
 		}
@@ -345,7 +361,8 @@ export function initTaskMaster(overrides = {}) {
 				'task-complexity-report.json',
 				'complexity-report.json'
 			],
-			paths.projectRoot
+			paths.projectRoot,
+			true // Enable parent directory creation for output paths
 		);
 	}
 
