@@ -1688,13 +1688,11 @@ function registerCommands(programInstance) {
 			displayCurrentTagIndicator(targetTag);
 
 			// Tag-aware output file naming: master -> task-complexity-report.json, other tags -> task-complexity-report_tagname.json
-			const baseOutputPath =
-				taskMaster.getComplexityReportPath() ||
-				path.join(taskMaster.getProjectRoot(), COMPLEXITY_REPORT_FILE);
-			const outputPath =
-				options.output === COMPLEXITY_REPORT_FILE && targetTag !== 'master'
-					? baseOutputPath.replace('.json', `_${targetTag}.json`)
-					: options.output || baseOutputPath;
+			const outputPath = resolveComplexityReportPath({
+				projectRoot: taskMaster.getProjectRoot(),
+				tag: targetTag,
+				output: options.output
+			});
 
 			console.log(
 				chalk.blue(
@@ -4946,6 +4944,33 @@ async function runCLI(argv = process.argv) {
 
 		process.exit(1);
 	}
+}
+
+/**
+ * Resolve the final complexity-report path.
+ * Rules:
+ *  1. If caller passes --output, always respect it.
+ *  2. If no explicit output AND tag === 'master' → default report file
+ *  3. If no explicit output AND tag !== 'master' → append _<tag>.json
+ *
+ * @param {string|undefined} outputOpt  --output value from CLI (may be undefined)
+ * @param {string} targetTag            resolved tag (defaults to 'master')
+ * @param {string} projectRoot          absolute project root
+ * @returns {string} absolute path for the report
+ */
+export function resolveComplexityReportPath({
+	projectRoot,
+	tag = 'master',
+	output // may be undefined
+}) {
+	// 1. user knows best
+	if (output) {
+		return path.isAbsolute(output) ? output : path.join(projectRoot, output);
+	}
+
+	// 2. default naming
+	const base = path.join(projectRoot, COMPLEXITY_REPORT_FILE);
+	return tag !== 'master' ? base.replace('.json', `_${tag}.json`) : base;
 }
 
 export {
