@@ -55,7 +55,7 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 		log('info', `Reading tasks from ${tasksPath}...`);
 
 		// Read the raw data without tag resolution to preserve tagged structure
-		let rawData = readJSON(tasksPath, projectRoot, tag); // No tag parameter
+		let rawData = readJSON(tasksPath, projectRoot); // No tag parameter
 
 		// Handle the case where readJSON returns resolved data with _rawTaggedData
 		if (rawData && rawData._rawTaggedData) {
@@ -121,7 +121,7 @@ async function setTaskStatus(tasksPath, taskIdInput, newStatus, options = {}) {
 
 		// Write the updated raw data back to the file
 		// The writeJSON function will automatically filter out _rawTaggedData
-		writeJSON(tasksPath, rawData, projectRoot, tag);
+		writeJSON(tasksPath, rawData, projectRoot);
 
 		// Validate dependencies after status update
 		log('info', 'Validating dependencies after status update...');
