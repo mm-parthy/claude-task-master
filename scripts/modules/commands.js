@@ -1238,13 +1238,13 @@ function registerCommands(programInstance) {
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
-					tasksPath: options.file || true
+					tasksPath: options.file || true,
+					tag: options.tag
 				});
 				const tasksPath = taskMaster.getTasksPath();
 
 				// Resolve tag using standard pattern
-				const tag =
-					options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+				const tag = taskMaster.getCurrentTag();
 
 				// Show current tag context
 				displayCurrentTagIndicator(tag);
@@ -1500,7 +1500,8 @@ function registerCommands(programInstance) {
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const initOptions = {
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			};
 
 			// Only pass complexityReportPath if user provided a custom path
@@ -1512,9 +1513,7 @@ function registerCommands(programInstance) {
 
 			const statusFilter = options.status;
 			const withSubtasks = options.withSubtasks || false;
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
-
+			const tag = taskMaster.getCurrentTag();
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
 
@@ -1566,12 +1565,17 @@ function registerCommands(programInstance) {
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
 			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
+			const initOptions = {
 				tasksPath: options.file || true
-			});
+			};
 
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			if (options.tag) {
+				initOptions.tag = options.tag;
+			}
+
+			const taskMaster = initTaskMaster(initOptions);
+
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -1673,26 +1677,23 @@ function registerCommands(programInstance) {
 			if (options.output) {
 				initOptions.complexityReportPath = options.output;
 			}
+			if (options.tag) {
+				initOptions.tag = options.tag;
+			}
 			const taskMaster = initTaskMaster(initOptions);
 
-			const tag = options.tag;
 			const modelOverride = options.model;
 			const thresholdScore = parseFloat(options.threshold);
 			const useResearch = options.research || false;
 
 			// Use the provided tag, or the current active tag, or default to 'master'
-			const targetTag =
-				tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const targetTag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(targetTag);
 
 			// Tag-aware output file naming: master -> task-complexity-report.json, other tags -> task-complexity-report_tagname.json
-			const outputPath = resolveComplexityReportPath({
-				projectRoot: taskMaster.getProjectRoot(),
-				tag: targetTag,
-				output: options.output
-			});
+			const outputPath = taskMaster.getComplexityReportPath();
 
 			console.log(
 				chalk.blue(
@@ -1773,9 +1774,13 @@ function registerCommands(programInstance) {
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (prompt, options) => {
 			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
+			const initOptions = {
 				tasksPath: options.file || true
-			});
+			};
+			if (options.tag) {
+				initOptions.tag = options.tag;
+			}
+			const taskMaster = initTaskMaster(initOptions);
 
 			// Parameter validation
 			if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
@@ -1875,8 +1880,7 @@ function registerCommands(programInstance) {
 				}
 			}
 
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2219,6 +2223,8 @@ ${result.result}
 			});
 
 			const projectRoot = taskMaster.getProjectRoot();
+
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2582,26 +2588,23 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				complexityReportPath: options.file || true
-			});
+			const overrides = {};
 
-			// Use the provided tag, or the current active tag, or default to 'master'
-			const targetTag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			if (options.tag) {
+				overrides.tag = options.tag;
+			}
+
+			if (options.file && options.file !== COMPLEXITY_REPORT_FILE) {
+				overrides.complexityReportPath = options.file;
+			}
+
+			// Initialize TaskMaster
+			const taskMaster = initTaskMaster(overrides);
 
 			// Show current tag context
-			displayCurrentTagIndicator(targetTag);
+			displayCurrentTagIndicator(taskMaster.getCurrentTag());
 
-			// Tag-aware report file naming: master -> task-complexity-report.json, other tags -> task-complexity-report_tagname.json
-			const baseReportPath = taskMaster.getComplexityReportPath();
-			const reportPath =
-				options.file === COMPLEXITY_REPORT_FILE && targetTag !== 'master'
-					? baseReportPath.replace('.json', `_${targetTag}.json`)
-					: baseReportPath;
-
-			await displayComplexityReport(reportPath);
+			await displayComplexityReport(taskMaster.getComplexityReportPath());
 		});
 
 	// add-subtask command
