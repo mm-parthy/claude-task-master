@@ -867,7 +867,8 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 								return true;
 							}
 
-							// Handle numeric dependencies
+							// Handle numeric dependencies (converted to fully-qualified IDs during expansion)
+							// These are relative subtask IDs that get converted to fully-qualified format
 							const numericId =
 								typeof depId === 'number' ? depId : parseInt(depId, 10);
 
@@ -1155,18 +1156,63 @@ function validateAndFixDependencies(
 
 		// Handle subtask dependencies
 		if (task.subtasks) {
-			task.subtasks = task.subtasks.map((subtask) => {
-				if (subtask.dependencies) {
-					const uniqueDeps = [...new Set(subtask.dependencies)];
-					subtask.dependencies = uniqueDeps;
-				}
-				return subtask;
+			task.subtasks.forEach((subtask) => {
+				if (!subtask || !subtask.dependencies) return;
+				const processedDeps = [];
+				const seen = new Set();
+				subtask.dependencies.forEach((depId) => {
+					// Handle fully-qualified subtask IDs
+					if (typeof depId === 'string' && depId.includes('.')) {
+						const [parentId, subtaskId] = depId.split('.');
+						if (
+							Number.isNaN(parseInt(parentId, 10)) ||
+							Number.isNaN(parseInt(subtaskId, 10))
+						) {
+							return;
+						}
+						if (taskExists(tasksData.tasks, depId) && !seen.has(depId)) {
+							processedDeps.push(depId);
+							seen.add(depId);
+						}
+						return;
+					}
+
+					// Handle numeric dependencies (converted to fully-qualified IDs during expansion)
+					// These are relative subtask IDs that get converted to fully-qualified format
+					if (typeof depId === 'number') {
+						// Check if it's a valid task dependency first
+						if (taskExists(tasksData.tasks, depId) && !seen.has(depId)) {
+							processedDeps.push(depId);
+							seen.add(depId);
+							return; // Prioritize task dependencies over subtask dependencies
+						}
+						// Only check for subtask dependency if no task dependency exists
+						if (depId < 100) {
+							const fullyQualifiedId = `${task.id}.${depId}`;
+							if (
+								taskExists(tasksData.tasks, fullyQualifiedId) &&
+								!seen.has(fullyQualifiedId)
+							) {
+								processedDeps.push(fullyQualifiedId);
+								seen.add(fullyQualifiedId);
+							}
+						}
+						return;
+					}
+
+					// Handle other types (strings that aren't fully-qualified subtask IDs)
+					if (taskExists(tasksData.tasks, depId) && !seen.has(depId)) {
+						processedDeps.push(depId);
+						seen.add(depId);
+					}
+				});
+				subtask.dependencies = processedDeps;
 			});
 		}
 		return task;
 	});
 
-	// 2. Remove invalid task dependencies (non-existent tasks)
+	// 2. Convert relative references to fully-qualified IDs and remove invalid dependencies
 	tasksData.tasks.forEach((task) => {
 		// Clean up task dependencies
 		if (task.dependencies) {
@@ -1180,19 +1226,59 @@ function validateAndFixDependencies(
 			});
 		}
 
-		// Clean up subtask dependencies
+		// Clean up and convert subtask dependencies
 		if (task.subtasks) {
 			task.subtasks.forEach((subtask) => {
 				if (subtask.dependencies) {
-					subtask.dependencies = subtask.dependencies.filter((depId) => {
-						// Handle numeric subtask references
-						if (typeof depId === 'number' && depId < 100) {
-							const fullSubtaskId = `${task.id}.${depId}`;
-							return taskExists(tasksData.tasks, fullSubtaskId);
+					const processedDeps = [];
+					const seen = new Set();
+					subtask.dependencies.forEach((depId) => {
+						// Handle fully-qualified subtask IDs
+						if (typeof depId === 'string' && depId.includes('.')) {
+							const [parentId, subtaskId] = depId.split('.');
+							if (
+								Number.isNaN(parseInt(parentId, 10)) ||
+								Number.isNaN(parseInt(subtaskId, 10))
+							) {
+								return;
+							}
+							if (taskExists(tasksData.tasks, depId) && !seen.has(depId)) {
+								processedDeps.push(depId);
+								seen.add(depId);
+							}
+							return;
 						}
-						// Handle full task/subtask references
-						return taskExists(tasksData.tasks, depId);
+
+						// Handle numeric dependencies (converted to fully-qualified IDs during expansion)
+						// These are relative subtask IDs that get converted to fully-qualified format
+						if (typeof depId === 'number') {
+							// Check if it's a valid task dependency first
+							if (taskExists(tasksData.tasks, depId) && !seen.has(depId)) {
+								processedDeps.push(depId);
+								seen.add(depId);
+								return; // Prioritize task dependencies over subtask dependencies
+							}
+							// Only check for subtask dependency if no task dependency exists
+							if (depId < 100) {
+								const fullyQualifiedId = `${task.id}.${depId}`;
+								if (
+									taskExists(tasksData.tasks, fullyQualifiedId) &&
+									!seen.has(fullyQualifiedId)
+								) {
+									processedDeps.push(fullyQualifiedId);
+									seen.add(fullyQualifiedId);
+								}
+							}
+							return;
+						}
+
+						// Handle other types (strings that aren't fully-qualified subtask IDs)
+						if (taskExists(tasksData.tasks, depId) && !seen.has(depId)) {
+							processedDeps.push(depId);
+							seen.add(depId);
+						}
 					});
+					subtask.dependencies = processedDeps;
 				}
 			});
 		}

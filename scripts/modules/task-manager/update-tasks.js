@@ -36,7 +36,12 @@ const updatedTaskSchema = z
 		title: z.string(),
 		description: z.string(),
 		status: z.string(),
-		dependencies: z.array(z.union([z.number().int(), z.string()])),
+		dependencies: z.array(
+			z.union([
+				z.number().int().describe('Task ID (e.g., 1, 2, 15)'),
+				z.string().describe('Fully-qualified subtask ID (e.g., "1.2", "15.3")')
+			])
+		),
 		priority: z.string().nullable(),
 		details: z.string().nullable(),
 		testStrategy: z.string().nullable(),

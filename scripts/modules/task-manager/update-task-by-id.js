@@ -36,7 +36,12 @@ const updatedTaskSchema = z
 		title: z.string(), // Title should be preserved, but check it exists
 		description: z.string(),
 		status: z.string(),
-		dependencies: z.array(z.union([z.number().int(), z.string()])),
+		dependencies: z.array(
+			z.union([
+				z.number().int().describe('Task ID (e.g., 1, 2, 15)'),
+				z.string().describe('Fully-qualified subtask ID (e.g., "1.2", "15.3")')
+			])
+		),
 		priority: z.string().nullable().default('medium'),
 		details: z.string().nullable().default(''),
 		testStrategy: z.string().nullable().default(''),
@@ -51,7 +56,14 @@ const updatedTaskSchema = z
 					title: z.string(),
 					description: z.string(),
 					status: z.string(),
-					dependencies: z.array(z.number().int()).nullable().default([]),
+					dependencies: z
+						.array(
+							z
+								.string()
+								.describe('Fully-qualified subtask ID (e.g., "1.2", "15.3")')
+						)
+						.nullable()
+						.default([]),
 					details: z.string().nullable().default(''),
 					testStrategy: z.string().nullable().default('')
 				})

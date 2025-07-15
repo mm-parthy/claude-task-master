@@ -40,8 +40,10 @@ const subtaskSchema = z
 			.min(10)
 			.describe('Detailed description of the subtask'),
 		dependencies: z
-			.array(z.number().int())
-			.describe('IDs of prerequisite subtasks within this expansion'),
+			.array(
+				z.string().describe('Fully-qualified subtask ID (e.g., "1.2", "15.3")')
+			)
+			.describe('Fully-qualified IDs of prerequisite subtasks'),
 		details: z.string().min(20).describe('Implementation details and guidance'),
 		status: z
 			.string()

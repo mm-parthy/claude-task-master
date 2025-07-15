@@ -196,13 +196,15 @@ function moveSubtaskToSubtask(tasks, sourceId, destinationId) {
 			destParentTask.subtasks.push(sourceSubtask);
 		}
 	} else {
-		// Moving between different parents
-		moveSubtaskToAnotherParent(
+		// Moving between different parents - rewrite dependencies
+		const movedSubtask = moveSubtaskToAnotherParent(
 			sourceSubtask,
 			sourceParentTask,
 			sourceSubtaskIndex,
 			destParentTask,
-			destSubtaskId
+			destSubtaskId,
+			sourceParentId,
+			destParentId
 		);
 	}
 
@@ -299,6 +301,15 @@ function moveTaskToSubtask(tasks, sourceId, destinationId) {
 
 	const sourceTask = tasks[sourceTaskIndex];
 
+	// CRITICAL GUARD: Prevent data loss by checking if source task has subtasks
+	if (sourceTask.subtasks && sourceTask.subtasks.length > 0) {
+		throw new Error(
+			`Cannot move task ${sourceId} to subtask position ${destinationId} because it has ${sourceTask.subtasks.length} subtasks. ` +
+				`This operation would permanently delete all subtasks. ` +
+				`Please move the subtasks first or choose a different destination.`
+		);
+	}
+
 	// Initialize subtasks array if it doesn't exist (based on commit fixes)
 	if (!destParentTask.subtasks) {
 		destParentTask.subtasks = [];
@@ -310,7 +321,11 @@ function moveTaskToSubtask(tasks, sourceId, destinationId) {
 		title: sourceTask.title,
 		description: sourceTask.description,
 		status: sourceTask.status || 'pending',
-		dependencies: sourceTask.dependencies || [],
+		dependencies: convertTaskDependenciesToSubtaskDependencies(
+			sourceTask.dependencies || [],
+			sourceTaskId,
+			destParentId
+		),
 		details: sourceTask.details || '',
 		testStrategy: sourceTask.testStrategy || ''
 	};
@@ -331,13 +346,41 @@ function moveTaskToSubtask(tasks, sourceId, destinationId) {
 	const insertPosition = destSubtaskIndex === -1 ? 0 : destSubtaskIndex + 1;
 	destParentTask.subtasks.splice(insertPosition, 0, newSubtask);
 
-	// Remove the original task from the tasks array
+	// Remove the source task
 	tasks.splice(sourceTaskIndex, 1);
 
 	return {
 		message: `Converted task ${sourceId} to subtask ${destinationId}`,
 		movedItem: newSubtask
 	};
+}
+
+/**
+ * Convert task dependencies to subtask dependencies when moving a task to subtask position
+ * @param {Array} taskDependencies - Original task dependencies
+ * @param {number} oldTaskId - Original task ID
+ * @param {number} newParentId - New parent task ID
+ * @returns {Array} Converted dependencies for subtask
+ */
+function convertTaskDependenciesToSubtaskDependencies(
+	taskDependencies,
+	oldTaskId,
+	newParentId
+) {
+	return taskDependencies.map((dep) => {
+		// If it's a fully-qualified subtask ID, update the parent part
+		if (typeof dep === 'string' && dep.includes('.')) {
+			const [parentId, subtaskId] = dep.split('.');
+			// If the dependency was on the task we're converting, update it to the new parent
+			if (parseInt(parentId, 10) === oldTaskId) {
+				return `${newParentId}.${subtaskId}`;
+			}
+			// Otherwise keep the original fully-qualified ID
+			return dep;
+		}
+		// If it's a task ID, keep it as is (subtasks can depend on main tasks)
+		return dep;
+	});
 }
 
 function moveTaskToTask(tasks, sourceId, destinationId) {
@@ -374,14 +417,21 @@ function moveSubtaskToAnotherParent(
 	sourceParentTask,
 	sourceSubtaskIndex,
 	destParentTask,
-	destSubtaskId
+	destSubtaskId,
+	sourceParentId,
+	destParentId
 ) {
 	const destSubtaskId_num = parseInt(destSubtaskId, 10);
 
-	// Create new subtask with destination ID
+	// Create new subtask with destination ID and rewritten dependencies
 	const newSubtask = {
 		...sourceSubtask,
-		id: destSubtaskId_num
+		id: destSubtaskId_num,
+		dependencies: rewriteSubtaskDependenciesForNewParent(
+			sourceSubtask.dependencies || [],
+			sourceParentId,
+			destParentId
+		)
 	};
 
 	// Initialize subtasks array if it doesn't exist (based on commit fixes)
@@ -409,6 +459,48 @@ function moveSubtaskToAnotherParent(
 	sourceParentTask.subtasks.splice(sourceSubtaskIndex, 1);
 
 	return newSubtask;
+}
+
+/**
+ * Rewrite subtask dependencies when moving to a new parent context
+ * @param {Array} dependencies - Original dependencies
+ * @param {number} oldParentId - Original parent task ID
+ * @param {number} newParentId - New parent task ID
+ * @returns {Array} Rewritten dependencies
+ */
+function rewriteSubtaskDependenciesForNewParent(
+	dependencies,
+	oldParentId,
+	newParentId
+) {
+	return dependencies.map((dep) => {
+		// If it's a fully-qualified subtask ID
+		if (typeof dep === 'string' && dep.includes('.')) {
+			const [parentId, subtaskId] = dep.split('.');
+			const parentIdNum = parseInt(parentId, 10);
+
+			// If this dependency was on a sibling subtask in the old parent, update to new parent
+			if (parentIdNum === oldParentId) {
+				return `${newParentId}.${subtaskId}`;
+			}
+			// Otherwise keep the original fully-qualified ID
+			return dep;
+		}
+
+		// If it's a numeric dependency, we need to determine if it's a task or subtask dependency
+		// These are typically converted to fully-qualified IDs during expansion, but we preserve them
+		// here and let the dependency manager handle the resolution
+		if (typeof dep === 'number') {
+			// For numeric dependencies, we need to preserve them as-is if they're task dependencies
+			// Only convert to fully-qualified if they're actually subtask dependencies
+			// Since we can't determine this without context, we'll preserve numeric dependencies
+			// and let the dependency manager handle the resolution
+			return dep;
+		}
+
+		// If it's a task ID, keep it as is (subtasks can depend on main tasks)
+		return dep;
+	});
 }
 
 function moveTaskToNewId(tasks, sourceTaskIndex, sourceTask, destTaskId) {

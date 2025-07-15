@@ -811,3 +811,294 @@ describe('Dependency Manager Module', () => {
 		});
 	});
 });
+
+describe('Enhanced Dependency Validation and Conversion', () => {
+	test('should convert relative numeric dependencies to fully-qualified IDs', () => {
+		const mockTasksData = {
+			tasks: [
+				{
+					id: 1,
+					title: 'Task 1',
+					subtasks: [
+						{
+							id: 1,
+							title: 'Subtask 1.1',
+							dependencies: [1, 2, 3] // Relative dependencies
+						},
+						{
+							id: 2,
+							title: 'Subtask 1.2',
+							dependencies: []
+						},
+						{
+							id: 3,
+							title: 'Subtask 1.3',
+							dependencies: []
+						}
+					]
+				},
+				{
+					id: 2,
+					title: 'Task 2',
+					subtasks: []
+				},
+				{
+					id: 3,
+					title: 'Task 3',
+					subtasks: []
+				}
+			]
+		};
+
+		const result = validateAndFixDependencies(mockTasksData);
+
+		expect(result).toBe(true);
+
+		// Check that relative dependencies were converted to fully-qualified IDs if subtasks exist,
+		// and preserved as task dependencies if tasks exist.
+		const subtask1 = mockTasksData.tasks[0].subtasks[0];
+		// Should contain '1.2' and '1.3' (fully-qualified subtasks)
+		expect(subtask1.dependencies).toContain('1.2');
+		expect(subtask1.dependencies).toContain('1.3');
+		// Should also contain 2 and 3 (task dependencies) if those tasks exist
+		expect(subtask1.dependencies).toContain(2);
+		expect(subtask1.dependencies).toContain(3);
+	});
+
+	test('should preserve fully-qualified subtask IDs', () => {
+		const mockTasksData = {
+			tasks: [
+				{
+					id: 1,
+					title: 'Task 1',
+					subtasks: [
+						{
+							id: 1,
+							title: 'Subtask 1.1',
+							dependencies: ['1.2', '2.1'] // Mixed: same parent + different parent
+						},
+						{
+							id: 2,
+							title: 'Subtask 1.2',
+							dependencies: []
+						}
+					]
+				},
+				{
+					id: 2,
+					title: 'Task 2',
+					subtasks: [
+						{
+							id: 1,
+							title: 'Subtask 2.1',
+							dependencies: []
+						}
+					]
+				}
+			]
+		};
+
+		const result = validateAndFixDependencies(mockTasksData);
+
+		// Should return false because no changes are needed (dependencies are already valid)
+		expect(result).toBe(false);
+
+		// Check that fully-qualified IDs are preserved
+		const subtask1 = mockTasksData.tasks[0].subtasks[0];
+		expect(subtask1.dependencies).toContain('1.2');
+		expect(subtask1.dependencies).toContain('2.1');
+	});
+
+	test('should preserve task dependencies', () => {
+		const mockTasksData = {
+			tasks: [
+				{
+					id: 1,
+					title: 'Task 1',
+					subtasks: [
+						{
+							id: 1,
+							title: 'Subtask 1.1',
+							dependencies: [2, 3] // Task dependencies
+						}
+					]
+				},
+				{
+					id: 2,
+					title: 'Task 2',
+					dependencies: [],
+					subtasks: []
+				},
+				{
+					id: 3,
+					title: 'Task 3',
+					dependencies: [],
+					subtasks: []
+				}
+			]
+		};
+
+		const result = validateAndFixDependencies(mockTasksData);
+
+		expect(result).toBe(true);
+
+		// Check that task dependencies are preserved
+		const subtask1 = mockTasksData.tasks[0].subtasks[0];
+		expect(subtask1.dependencies).toContain(2);
+		expect(subtask1.dependencies).toContain(3);
+	});
+
+	test('should remove invalid dependencies', () => {
+		const mockTasksData = {
+			tasks: [
+				{
+					id: 1,
+					title: 'Task 1',
+					subtasks: [
+						{
+							id: 1,
+							title: 'Subtask 1.1',
+							dependencies: [999, 'invalid.id', '1.999', 1] // Invalid dependencies
+						}
+					]
+				}
+			]
+		};
+
+		const result = validateAndFixDependencies(mockTasksData);
+
+		expect(result).toBe(true);
+
+		// Check that invalid dependencies were removed
+		const subtask1 = mockTasksData.tasks[0].subtasks[0];
+		expect(subtask1.dependencies).not.toContain(999);
+		expect(subtask1.dependencies).not.toContain('invalid.id');
+		expect(subtask1.dependencies).not.toContain('1.999');
+		expect(subtask1.dependencies).not.toContain(1); // Self-dependency should be removed
+	});
+
+	test('should handle mixed dependency types correctly', () => {
+		const mockTasksData = {
+			tasks: [
+				{
+					id: 1,
+					title: 'Task 1',
+					subtasks: [
+						{
+							id: 1,
+							title: 'Subtask 1.1',
+							dependencies: [2, '1.2', 3, '2.1'] // Mixed: tasks + subtasks
+						},
+						{
+							id: 2,
+							title: 'Subtask 1.2',
+							dependencies: []
+						}
+					]
+				},
+				{
+					id: 2,
+					title: 'Task 2',
+					subtasks: [
+						{
+							id: 1,
+							title: 'Subtask 2.1',
+							dependencies: []
+						}
+					]
+				},
+				{
+					id: 3,
+					title: 'Task 3',
+					dependencies: [],
+					subtasks: []
+				}
+			]
+		};
+
+		const result = validateAndFixDependencies(mockTasksData);
+
+		expect(result).toBe(true);
+
+		// Check that all valid dependencies are preserved
+		const subtask1 = mockTasksData.tasks[0].subtasks[0];
+		expect(subtask1.dependencies).toContain(2); // Task dependency
+		expect(subtask1.dependencies).toContain('1.2'); // Same parent subtask
+		expect(subtask1.dependencies).toContain(3); // Task dependency
+		expect(subtask1.dependencies).toContain('2.1'); // Different parent subtask
+	});
+
+	test('should remove duplicate dependencies', () => {
+		const mockTasksData = {
+			tasks: [
+				{
+					id: 1,
+					title: 'Task 1',
+					subtasks: [
+						{
+							id: 1,
+							title: 'Subtask 1.1',
+							dependencies: [2, 2, '1.2', '1.2', 3] // Duplicates
+						},
+						{
+							id: 2,
+							title: 'Subtask 1.2',
+							dependencies: []
+						}
+					]
+				},
+				{
+					id: 2,
+					title: 'Task 2',
+					dependencies: [],
+					subtasks: []
+				},
+				{
+					id: 3,
+					title: 'Task 3',
+					dependencies: [],
+					subtasks: []
+				}
+			]
+		};
+
+		const result = validateAndFixDependencies(mockTasksData);
+
+		expect(result).toBe(true);
+
+		// Check that duplicates were removed
+		const subtask1 = mockTasksData.tasks[0].subtasks[0];
+		const uniqueDeps = [...new Set(subtask1.dependencies)];
+		expect(subtask1.dependencies.length).toBe(uniqueDeps.length);
+		expect(subtask1.dependencies).toContain(2);
+		expect(subtask1.dependencies).toContain('1.2');
+		expect(subtask1.dependencies).toContain(3);
+	});
+
+	test('should return false when no changes are made', () => {
+		const mockTasksData = {
+			tasks: [
+				{
+					id: 1,
+					title: 'Task 1',
+					subtasks: [
+						{
+							id: 1,
+							title: 'Subtask 1.1',
+							dependencies: ['1.2'] // Already valid
+						},
+						{
+							id: 2,
+							title: 'Subtask 1.2',
+							dependencies: []
+						}
+					]
+				}
+			]
+		};
+
+		const result = validateAndFixDependencies(mockTasksData);
+
+		expect(result).toBe(false); // No changes needed
+	});
+});
