@@ -253,12 +253,37 @@ function moveSubtaskToTask(tasks, sourceId, destinationId) {
 		title: sourceSubtask.title,
 		description: sourceSubtask.description,
 		status: sourceSubtask.status || 'pending',
-		dependencies: sourceSubtask.dependencies || [],
+		dependencies: [], // Will be populated below
 		priority: sourceSubtask.priority || 'medium',
 		details: sourceSubtask.details || '',
 		testStrategy: sourceSubtask.testStrategy || '',
 		subtasks: []
 	};
+
+	// Rewrite dependencies for the promoted subtask
+	if (sourceSubtask.dependencies && Array.isArray(sourceSubtask.dependencies)) {
+		newTask.dependencies = sourceSubtask.dependencies.map((depId) => {
+			// If it's a fully-qualified subtask ID from the same parent, convert to task reference
+			if (typeof depId === 'string' && depId.includes('.')) {
+				const [depParentId, depSubtaskId] = depId.split('.').map(Number);
+				if (depParentId === sourceParentId) {
+					// This was a sibling subtask dependency, convert to task reference
+					return depParentId;
+				}
+			}
+			// If it's a small number, it was likely a sibling subtask reference
+			if (typeof depId === 'number' && depId < 10) {
+				// Check if there's a sibling subtask with this ID
+				const siblingSubtask = sourceParentTask.subtasks?.find(st => st.id === depId);
+				if (siblingSubtask) {
+					// Convert to parent task reference since we're promoting to a task
+					return sourceParentId;
+				}
+			}
+			// Otherwise, keep as is (task reference)
+			return depId;
+		});
+	}
 
 	// Remove subtask from source parent
 	sourceParentTask.subtasks.splice(sourceSubtaskIndex, 1);

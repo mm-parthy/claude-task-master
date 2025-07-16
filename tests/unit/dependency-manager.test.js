@@ -9,7 +9,8 @@ import {
 	removeDuplicateDependencies,
 	cleanupSubtaskDependencies,
 	ensureAtLeastOneIndependentSubtask,
-	validateAndFixDependencies
+	validateAndFixDependencies,
+	convertRelativeDependencies
 } from '../../scripts/modules/dependency-manager.js';
 import * as utils from '../../scripts/modules/utils.js';
 import { sampleTasks } from '../fixtures/sample-tasks.js';
@@ -253,6 +254,154 @@ describe('Dependency Manager Module', () => {
 			mockTaskExists.mockImplementation(() => true);
 			const result = isCircularDependency(tasks, '1.2', ['1.1']);
 			expect(result).toBe(true);
+		});
+	});
+
+	describe('convertRelativeDependencies function', () => {
+		test('should convert numeric subtask dependencies to fully-qualified IDs', () => {
+			const tasks = [
+				{
+					id: 16,
+					dependencies: [],
+					subtasks: [
+						{ id: 1, dependencies: [] },
+						{ id: 2, dependencies: [1] }, // Should become ["16.1"]
+						{ id: 3, dependencies: [2] }, // Should become ["16.2"]
+						{ id: 4, dependencies: [1, 3] } // Should become ["16.1", "16.3"]
+					]
+				}
+			];
+
+			const result = convertRelativeDependencies(tasks);
+
+			expect(result[0].subtasks[1].dependencies).toEqual(['16.1']);
+			expect(result[0].subtasks[2].dependencies).toEqual(['16.2']);
+			expect(result[0].subtasks[3].dependencies).toEqual(['16.1', '16.3']);
+		});
+
+		test('should preserve existing fully-qualified subtask dependencies', () => {
+			const tasks = [
+				{
+					id: 16,
+					dependencies: [],
+					subtasks: [
+						{ id: 1, dependencies: [] },
+						{ id: 2, dependencies: ['16.1'] }, // Already fully-qualified
+						{ id: 3, dependencies: ['16.2'] } // Already fully-qualified
+					]
+				}
+			];
+
+			const result = convertRelativeDependencies(tasks);
+
+			expect(result[0].subtasks[1].dependencies).toEqual(['16.1']);
+			expect(result[0].subtasks[2].dependencies).toEqual(['16.2']);
+		});
+
+		test('should preserve task dependencies (large numbers)', () => {
+			const tasks = [
+				{
+					id: 16,
+					dependencies: [15, 20], // Task dependencies
+					subtasks: [
+						{ id: 1, dependencies: [15] }, // Task dependency
+						{ id: 2, dependencies: [1, 25] } // Mix of subtask and task dependencies
+					]
+				}
+			];
+
+			const result = convertRelativeDependencies(tasks);
+
+			expect(result[0].dependencies).toEqual([15, 20]); // Unchanged
+			expect(result[0].subtasks[0].dependencies).toEqual([15]); // Unchanged
+			expect(result[0].subtasks[1].dependencies).toEqual(['16.1', 25]); // Mixed
+		});
+
+		test('should handle tasks without subtasks', () => {
+			const tasks = [
+				{ id: 1, dependencies: [2, 3] },
+				{ id: 2, dependencies: [] },
+				{ id: 3, dependencies: [1] }
+			];
+
+			const result = convertRelativeDependencies(tasks);
+
+			expect(result[0].dependencies).toEqual([2, 3]); // Unchanged
+			expect(result[1].dependencies).toEqual([]); // Unchanged
+			expect(result[2].dependencies).toEqual([1]); // Unchanged
+		});
+
+		test('should handle subtasks without dependencies', () => {
+			const tasks = [
+				{
+					id: 16,
+					dependencies: [],
+					subtasks: [
+						{ id: 1, dependencies: [] },
+						{ id: 2, dependencies: [] },
+						{ id: 3, dependencies: [] }
+					]
+				}
+			];
+
+			const result = convertRelativeDependencies(tasks);
+
+			expect(result[0].subtasks[0].dependencies).toEqual([]);
+			expect(result[0].subtasks[1].dependencies).toEqual([]);
+			expect(result[0].subtasks[2].dependencies).toEqual([]);
+		});
+
+		test('should handle mixed dependency types in same subtask', () => {
+			const tasks = [
+				{
+					id: 16,
+					dependencies: [],
+					subtasks: [
+						{ id: 1, dependencies: [] },
+						{ id: 2, dependencies: [1, 15, '16.3'] }, // Mix of relative, task, and fully-qualified
+						{ id: 3, dependencies: [] }
+					]
+				}
+			];
+
+			const result = convertRelativeDependencies(tasks);
+
+			expect(result[0].subtasks[1].dependencies).toEqual(['16.1', 15, '16.3']);
+		});
+
+		test('should not convert numbers that are not sibling subtask IDs', () => {
+			const tasks = [
+				{
+					id: 16,
+					dependencies: [],
+					subtasks: [
+						{ id: 1, dependencies: [] },
+						{ id: 2, dependencies: [5] }, // 5 is not a sibling subtask ID
+						{ id: 3, dependencies: [10] } // 10 is not a sibling subtask ID
+					]
+				}
+			];
+
+			const result = convertRelativeDependencies(tasks);
+
+			expect(result[0].subtasks[1].dependencies).toEqual([5]); // Unchanged
+			expect(result[0].subtasks[2].dependencies).toEqual([10]); // Unchanged
+		});
+
+		test('should handle edge case with single subtask', () => {
+			const tasks = [
+				{
+					id: 16,
+					dependencies: [],
+					subtasks: [
+						{ id: 1, dependencies: [1] } // Self-reference (should be converted to fully-qualified)
+					]
+				}
+			];
+
+			const result = convertRelativeDependencies(tasks);
+
+			expect(result[0].subtasks[0].dependencies).toEqual(['16.1']); // Converted to fully-qualified
 		});
 	});
 

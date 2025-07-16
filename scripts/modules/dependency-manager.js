@@ -22,6 +22,69 @@ import { displayBanner } from './ui.js';
 import { generateTaskFiles } from './task-manager.js';
 
 /**
+ * Convert relative numeric dependencies to fully-qualified subtask IDs
+ * This function handles the ambiguity between task references and subtask references
+ * @param {Array} tasks - Array of all tasks
+ * @returns {Array} Updated tasks with converted dependencies
+ */
+function convertRelativeDependencies(tasks) {
+	return tasks.map((task) => {
+		// Handle task's own dependencies
+		if (task.dependencies && Array.isArray(task.dependencies)) {
+			task.dependencies = task.dependencies.map((depId) => {
+				// If it's already a fully-qualified subtask ID, keep it
+				if (typeof depId === 'string' && depId.includes('.')) {
+					return depId;
+				}
+				
+				// If it's a number, check if it could be a subtask reference
+				if (typeof depId === 'number' && depId < 10) {
+					// Check if there's a subtask with this ID in the same parent
+					const matchingSubtask = task.subtasks?.find(st => st.id === depId);
+					if (matchingSubtask) {
+						// Convert to fully-qualified subtask ID
+						return `${task.id}.${depId}`;
+					}
+				}
+				
+				// Otherwise, treat as a task reference
+				return depId;
+			});
+		}
+
+		// Handle subtask dependencies
+		if (task.subtasks && Array.isArray(task.subtasks)) {
+			task.subtasks = task.subtasks.map((subtask) => {
+				if (subtask.dependencies && Array.isArray(subtask.dependencies)) {
+					subtask.dependencies = subtask.dependencies.map((depId) => {
+						// If it's already a fully-qualified subtask ID, keep it
+						if (typeof depId === 'string' && depId.includes('.')) {
+							return depId;
+						}
+						
+						// If it's a number, check if it could be a subtask reference
+						if (typeof depId === 'number' && depId < 10) {
+							// Check if there's a sibling subtask with this ID
+							const matchingSibling = task.subtasks?.find(st => st.id === depId);
+							if (matchingSibling) {
+								// Convert to fully-qualified subtask ID
+								return `${task.id}.${depId}`;
+							}
+						}
+						
+						// Otherwise, treat as a task reference
+						return depId;
+					});
+				}
+				return subtask;
+			});
+		}
+
+		return task;
+	});
+}
+
+/**
  * Add a dependency to a task
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {number|string} taskId - ID of the task to add dependency to
@@ -710,9 +773,49 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 			selfDependenciesRemoved: 0,
 			duplicateDependenciesRemoved: 0,
 			circularDependenciesFixed: 0,
+			relativeDependenciesConverted: 0,
 			tasksFixed: 0,
 			subtasksFixed: 0
 		};
+
+		// First phase: Convert relative dependencies to fully-qualified IDs
+		log('info', 'Converting relative dependencies to fully-qualified IDs...');
+		const convertedTasks = convertRelativeDependencies(data.tasks);
+		
+		// Count conversions
+		data.tasks.forEach((originalTask, taskIndex) => {
+			const convertedTask = convertedTasks[taskIndex];
+			
+			// Check task dependencies
+			if (originalTask.dependencies && convertedTask.dependencies) {
+				originalTask.dependencies.forEach((originalDep, depIndex) => {
+					const convertedDep = convertedTask.dependencies[depIndex];
+					if (originalDep !== convertedDep) {
+						stats.relativeDependenciesConverted++;
+						log('info', `Converted task ${originalTask.id} dependency from ${originalDep} to ${convertedDep}`);
+					}
+				});
+			}
+			
+			// Check subtask dependencies
+			if (originalTask.subtasks && convertedTask.subtasks) {
+				originalTask.subtasks.forEach((originalSubtask, subtaskIndex) => {
+					const convertedSubtask = convertedTask.subtasks[subtaskIndex];
+					if (originalSubtask.dependencies && convertedSubtask.dependencies) {
+						originalSubtask.dependencies.forEach((originalDep, depIndex) => {
+							const convertedDep = convertedSubtask.dependencies[depIndex];
+							if (originalDep !== convertedDep) {
+								stats.relativeDependenciesConverted++;
+								log('info', `Converted subtask ${originalTask.id}.${originalSubtask.id} dependency from ${originalDep} to ${convertedDep}`);
+							}
+						});
+					}
+				});
+			}
+		});
+		
+		// Update the data with converted tasks
+		data.tasks = convertedTasks;
 
 		// First phase: Remove duplicate dependencies in tasks
 		data.tasks.forEach((task) => {
@@ -1024,7 +1127,8 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 			stats.nonExistentDependenciesRemoved +
 			stats.selfDependenciesRemoved +
 			stats.duplicateDependenciesRemoved +
-			stats.circularDependenciesFixed;
+			stats.circularDependenciesFixed +
+			stats.relativeDependenciesConverted;
 
 		if (!isSilentMode()) {
 			if (totalFixedAll > 0) {
@@ -1033,6 +1137,7 @@ async function fixDependenciesCommand(tasksPath, options = {}) {
 				console.log(
 					boxen(
 						chalk.green(`Dependency Fixes Summary:\n\n`) +
+							`${chalk.cyan('Relative dependencies converted:')} ${stats.relativeDependenciesConverted}\n` +
 							`${chalk.cyan('Invalid dependencies removed:')} ${stats.nonExistentDependenciesRemoved}\n` +
 							`${chalk.cyan('Self-dependencies removed:')} ${stats.selfDependenciesRemoved}\n` +
 							`${chalk.cyan('Duplicate dependencies removed:')} ${stats.duplicateDependenciesRemoved}\n` +
@@ -1241,5 +1346,6 @@ export {
 	removeDuplicateDependencies,
 	cleanupSubtaskDependencies,
 	ensureAtLeastOneIndependentSubtask,
-	validateAndFixDependencies
+	validateAndFixDependencies,
+	convertRelativeDependencies
 };
