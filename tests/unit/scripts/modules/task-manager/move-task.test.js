@@ -61,7 +61,7 @@ describe('Move Task Module', () => {
 				}
 			});
 
-			await moveTask('test-tasks.json', '16.9', '21');
+			await moveTask('test-tasks.json', '16.9', '21', false, { projectRoot: '/test' });
 
 			// Verify the promoted task has rewritten dependencies
 			expect(mockWriteJSON).toHaveBeenCalledWith(
@@ -99,7 +99,7 @@ describe('Move Task Module', () => {
 				}
 			});
 
-			await moveTask('test-tasks.json', '16.2', '21');
+			await moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
 
 			// Verify task dependencies are preserved
 			expect(mockWriteJSON).toHaveBeenCalledWith(
@@ -137,7 +137,7 @@ describe('Move Task Module', () => {
 				}
 			});
 
-			await moveTask('test-tasks.json', '16.2', '21');
+			await moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
 
 			// Verify empty dependencies array is preserved
 			expect(mockWriteJSON).toHaveBeenCalledWith(
@@ -176,7 +176,7 @@ describe('Move Task Module', () => {
 				}
 			});
 
-			await moveTask('test-tasks.json', '16.2', '21');
+			await moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
 
 			// Verify dependencies are rewritten correctly
 			expect(mockWriteJSON).toHaveBeenCalledWith(
@@ -214,7 +214,7 @@ describe('Move Task Module', () => {
 				}
 			});
 
-			await moveTask('test-tasks.json', '16.2', '21');
+			await moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
 
 			// Verify large numbers are preserved as task references
 			expect(mockWriteJSON).toHaveBeenCalledWith(
@@ -253,7 +253,7 @@ describe('Move Task Module', () => {
 				}
 			});
 
-			await expect(moveTask('test-tasks.json', '16.99', '21'))
+			await expect(moveTask('test-tasks.json', '16.99', '21', false, { projectRoot: '/test' }))
 				.rejects
 				.toThrow('Source subtask 16.99 not found');
 		});
@@ -281,7 +281,7 @@ describe('Move Task Module', () => {
 				}
 			});
 
-			await expect(moveTask('test-tasks.json', '16.2', '21'))
+			await expect(moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' }))
 				.rejects
 				.toThrow('Cannot move to existing task ID 21');
 		});
