@@ -3,8 +3,8 @@
  */
 
 import { jest } from '@jest/globals';
-import moveTask from '../../../../../scripts/modules/task-manager/move-task.js';
-import { readJSON, writeJSON, log, getCurrentTag, setTasksForTag } from '../../../../../scripts/modules/utils.js';
+import * as moveTaskModule from '../../../../../scripts/modules/task-manager/move-task.js';
+import * as utils from '../../../../../scripts/modules/utils.js';
 
 // Mock dependencies
 jest.mock('path');
@@ -38,16 +38,16 @@ jest.mock('../../../../../scripts/modules/task-manager/generate-task-files.js', 
 				}
 			];
 
-			readJSON.mockReturnValue({
+			utils.readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
 			});
 
-			await moveTask('test-tasks.json', '16.9', '21', false, { projectRoot: '/test' });
+			await moveTaskModule.default('test-tasks.json', '16.9', '21', false, { projectRoot: '/test' });
 
 			// Verify the promoted task has rewritten dependencies
-			expect(writeJSON).toHaveBeenCalledWith(
+			expect(utils.writeJSON).toHaveBeenCalledWith(
 				'test-tasks.json',
 				expect.objectContaining({
 					master: {
@@ -76,16 +76,16 @@ jest.mock('../../../../../scripts/modules/task-manager/generate-task-files.js', 
 				}
 			];
 
-			readJSON.mockReturnValue({
+			utils.readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
 			});
 
-			await moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
+			await moveTaskModule.default('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
 
 			// Verify task dependencies are preserved
-			expect(writeJSON).toHaveBeenCalledWith(
+			expect(utils.writeJSON).toHaveBeenCalledWith(
 				'test-tasks.json',
 				expect.objectContaining({
 					master: {
@@ -114,16 +114,16 @@ jest.mock('../../../../../scripts/modules/task-manager/generate-task-files.js', 
 				}
 			];
 
-			readJSON.mockReturnValue({
+			utils.readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
 			});
 
-			await moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
+			await moveTaskModule.default('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
 
 			// Verify empty dependencies array is preserved
-			expect(writeJSON).toHaveBeenCalledWith(
+			expect(utils.writeJSON).toHaveBeenCalledWith(
 				'test-tasks.json',
 				expect.objectContaining({
 					master: {
@@ -153,16 +153,16 @@ jest.mock('../../../../../scripts/modules/task-manager/generate-task-files.js', 
 				}
 			];
 
-			readJSON.mockReturnValue({
+			utils.readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
 			});
 
-			await moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
+			await moveTaskModule.default('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
 
 			// Verify dependencies are rewritten correctly
-			expect(writeJSON).toHaveBeenCalledWith(
+			expect(utils.writeJSON).toHaveBeenCalledWith(
 				'test-tasks.json',
 				expect.objectContaining({
 					master: {
@@ -191,16 +191,16 @@ jest.mock('../../../../../scripts/modules/task-manager/generate-task-files.js', 
 				}
 			];
 
-			readJSON.mockReturnValue({
+			utils.readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
 			});
 
-			await moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
+			await moveTaskModule.default('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
 
 			// Verify large numbers are preserved as task references
-			expect(writeJSON).toHaveBeenCalledWith(
+			expect(utils.writeJSON).toHaveBeenCalledWith(
 				'test-tasks.json',
 				expect.objectContaining({
 					master: {
@@ -230,13 +230,13 @@ jest.mock('../../../../../scripts/modules/task-manager/generate-task-files.js', 
 				}
 			];
 
-			readJSON.mockReturnValue({
+			utils.readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
 			});
 
-			await expect(moveTask('test-tasks.json', '16.99', '21', false, { projectRoot: '/test' }))
+			await expect(moveTaskModule.default('test-tasks.json', '16.99', '21', false, { projectRoot: '/test' }))
 				.rejects
 				.toThrow('Source subtask 16.99 not found');
 		});
@@ -258,13 +258,13 @@ jest.mock('../../../../../scripts/modules/task-manager/generate-task-files.js', 
 				}
 			];
 
-			readJSON.mockReturnValue({
+			utils.readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
 			});
 
-			await expect(moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' }))
+			await expect(moveTaskModule.default('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' }))
 				.rejects
 				.toThrow('Cannot move to existing task ID 21');
 		});
