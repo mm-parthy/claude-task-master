@@ -4,41 +4,24 @@
 
 import { jest } from '@jest/globals';
 import moveTask from '../../../../../scripts/modules/task-manager/move-task.js';
-import * as utils from '../../../../../scripts/modules/utils.js';
+import { readJSON, writeJSON, log, getCurrentTag, setTasksForTag } from '../../../../../scripts/modules/utils.js';
 
 // Mock dependencies
 jest.mock('path');
-jest.mock('../../../../../scripts/modules/utils.js');
+jest.mock('../../../../../scripts/modules/utils.js', () => ({
+	readJSON: jest.fn(),
+	writeJSON: jest.fn(),
+	log: jest.fn(),
+	getCurrentTag: jest.fn(() => 'master'),
+	setTasksForTag: jest.fn()
+}));
 jest.mock('../../../../../scripts/modules/task-manager.js');
 jest.mock('../../../../../scripts/modules/task-manager/generate-task-files.js', () => jest.fn());
 
-// Mock utils module
-const mockLog = jest.fn();
-const mockReadJSON = jest.fn();
-const mockWriteJSON = jest.fn();
-const mockGetCurrentTag = jest.fn();
-const mockSetTasksForTag = jest.fn();
-
-jest.mock('../../../../../scripts/modules/utils.js', () => ({
-	log: mockLog,
-	readJSON: mockReadJSON,
-	writeJSON: mockWriteJSON,
-	getCurrentTag: mockGetCurrentTag,
-	setTasksForTag: mockSetTasksForTag
-}));
-
-describe('Move Task Module', () => {
-	beforeEach(() => {
-		jest.clearAllMocks();
-		
-		// Set default implementations
-		mockGetCurrentTag.mockReturnValue('master');
-		mockReadJSON.mockReturnValue({
-			master: {
-				tasks: []
-			}
+	describe('Move Task Module', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
 		});
-	});
 
 	describe('Subtask to Task Promotion', () => {
 		test('should rewrite sibling subtask dependencies to parent task references', async () => {
@@ -55,7 +38,7 @@ describe('Move Task Module', () => {
 				}
 			];
 
-			mockReadJSON.mockReturnValue({
+			readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
@@ -64,7 +47,7 @@ describe('Move Task Module', () => {
 			await moveTask('test-tasks.json', '16.9', '21', false, { projectRoot: '/test' });
 
 			// Verify the promoted task has rewritten dependencies
-			expect(mockWriteJSON).toHaveBeenCalledWith(
+			expect(writeJSON).toHaveBeenCalledWith(
 				'test-tasks.json',
 				expect.objectContaining({
 					master: {
@@ -76,7 +59,7 @@ describe('Move Task Module', () => {
 						])
 					}
 				}),
-				undefined,
+				'/test',
 				'master'
 			);
 		});
@@ -93,7 +76,7 @@ describe('Move Task Module', () => {
 				}
 			];
 
-			mockReadJSON.mockReturnValue({
+			readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
@@ -102,7 +85,7 @@ describe('Move Task Module', () => {
 			await moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
 
 			// Verify task dependencies are preserved
-			expect(mockWriteJSON).toHaveBeenCalledWith(
+			expect(writeJSON).toHaveBeenCalledWith(
 				'test-tasks.json',
 				expect.objectContaining({
 					master: {
@@ -114,7 +97,7 @@ describe('Move Task Module', () => {
 						])
 					}
 				}),
-				undefined,
+				'/test',
 				'master'
 			);
 		});
@@ -131,7 +114,7 @@ describe('Move Task Module', () => {
 				}
 			];
 
-			mockReadJSON.mockReturnValue({
+			readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
@@ -140,7 +123,7 @@ describe('Move Task Module', () => {
 			await moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
 
 			// Verify empty dependencies array is preserved
-			expect(mockWriteJSON).toHaveBeenCalledWith(
+			expect(writeJSON).toHaveBeenCalledWith(
 				'test-tasks.json',
 				expect.objectContaining({
 					master: {
@@ -152,7 +135,7 @@ describe('Move Task Module', () => {
 						])
 					}
 				}),
-				undefined,
+				'/test',
 				'master'
 			);
 		});
@@ -170,7 +153,7 @@ describe('Move Task Module', () => {
 				}
 			];
 
-			mockReadJSON.mockReturnValue({
+			readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
@@ -179,7 +162,7 @@ describe('Move Task Module', () => {
 			await moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
 
 			// Verify dependencies are rewritten correctly
-			expect(mockWriteJSON).toHaveBeenCalledWith(
+			expect(writeJSON).toHaveBeenCalledWith(
 				'test-tasks.json',
 				expect.objectContaining({
 					master: {
@@ -191,7 +174,7 @@ describe('Move Task Module', () => {
 						])
 					}
 				}),
-				undefined,
+				'/test',
 				'master'
 			);
 		});
@@ -208,7 +191,7 @@ describe('Move Task Module', () => {
 				}
 			];
 
-			mockReadJSON.mockReturnValue({
+			readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
@@ -217,7 +200,7 @@ describe('Move Task Module', () => {
 			await moveTask('test-tasks.json', '16.2', '21', false, { projectRoot: '/test' });
 
 			// Verify large numbers are preserved as task references
-			expect(mockWriteJSON).toHaveBeenCalledWith(
+			expect(writeJSON).toHaveBeenCalledWith(
 				'test-tasks.json',
 				expect.objectContaining({
 					master: {
@@ -229,7 +212,7 @@ describe('Move Task Module', () => {
 						])
 					}
 				}),
-				undefined,
+				'/test',
 				'master'
 			);
 		});
@@ -247,7 +230,7 @@ describe('Move Task Module', () => {
 				}
 			];
 
-			mockReadJSON.mockReturnValue({
+			readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
@@ -275,7 +258,7 @@ describe('Move Task Module', () => {
 				}
 			];
 
-			mockReadJSON.mockReturnValue({
+			readJSON.mockReturnValue({
 				master: {
 					tasks: mockTasks
 				}
