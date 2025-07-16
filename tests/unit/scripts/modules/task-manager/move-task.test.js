@@ -3,14 +3,14 @@
  */
 
 import { jest } from '@jest/globals';
-import moveTask from '../../../../scripts/modules/task-manager/move-task.js';
-import * as utils from '../../../../scripts/modules/utils.js';
+import moveTask from '../../../../../scripts/modules/task-manager/move-task.js';
+import * as utils from '../../../../../scripts/modules/utils.js';
 
 // Mock dependencies
 jest.mock('path');
-jest.mock('../../../../scripts/modules/utils.js');
-jest.mock('../../../../scripts/modules/task-manager.js');
-jest.mock('./generate-task-files.js', () => jest.fn());
+jest.mock('../../../../../scripts/modules/utils.js');
+jest.mock('../../../../../scripts/modules/task-manager.js');
+jest.mock('../../../../../scripts/modules/task-manager/generate-task-files.js', () => jest.fn());
 
 // Mock utils module
 const mockLog = jest.fn();
@@ -19,7 +19,7 @@ const mockWriteJSON = jest.fn();
 const mockGetCurrentTag = jest.fn();
 const mockSetTasksForTag = jest.fn();
 
-jest.mock('../../../../scripts/modules/utils.js', () => ({
+jest.mock('../../../../../scripts/modules/utils.js', () => ({
 	log: mockLog,
 	readJSON: mockReadJSON,
 	writeJSON: mockWriteJSON,
