@@ -69,13 +69,24 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	resolveEnvVariable: jest.fn((varName) => `mock_${varName}`),
 	isEmpty: jest.fn(() => false),
 	normalizeProjectRoot: jest.fn((root) => root),
-	slugifyTagForFilePath: jest.fn((tag) => tag),
+	slugifyTagForFilePath: jest.fn((tagName) => {
+		if (!tagName || typeof tagName !== 'string') {
+			return 'unknown-tag';
+		}
+		return tagName.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+	}),
 	createTagAwareFilePath: jest.fn((basePath, tag, projectRoot) => {
 		if (tag && tag !== 'master') {
 			const dir = path.dirname(basePath);
 			const ext = path.extname(basePath);
 			const name = path.basename(basePath, ext);
-			return path.join(projectRoot || '.', dir, `${name}_${tag}${ext}`);
+			// Use the slugified tag
+			const slugifiedTag = tag.replace(/[^a-zA-Z0-9_-]/g, '-').toLowerCase();
+			return path.join(
+				projectRoot || '.',
+				dir,
+				`${name}_${slugifiedTag}${ext}`
+			);
 		}
 		return path.join(projectRoot || '.', basePath);
 	}),
@@ -470,7 +481,11 @@ describe('Complexity Report Tag Isolation', () => {
 
 				let filename = 'task-complexity-report.json';
 				if (tag && tag !== 'master') {
-					filename = `task-complexity-report_${tag}.json`;
+					// Use slugified tag for cross-platform compatibility
+					const slugifiedTag = tag
+						.replace(/[^a-zA-Z0-9_-]/g, '-')
+						.toLowerCase();
+					filename = `task-complexity-report_${slugifiedTag}.json`;
 				}
 
 				return path.join(projectRoot, '.taskmaster/reports', filename);
@@ -1099,7 +1114,7 @@ describe('Complexity Report Tag Isolation', () => {
 				path.join(
 					projectRoot,
 					'.taskmaster/reports',
-					'task-complexity-report_feature/user-auth-v2.json'
+					'task-complexity-report_feature-user-auth-v2.json'
 				),
 				expect.any(String),
 				'utf8'
