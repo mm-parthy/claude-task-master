@@ -48,8 +48,7 @@ function listTasks(
 		}
 
 		// Add complexity scores to tasks if report exists
-		// Load the complexity report for the active tag
-		// ReportPath is already tag-aware resolved at boundry
+		// `reportPath` is already tag-aware (resolved at the CLI boundary).
 		const complexityReport = readComplexityReport(reportPath);
 		// Apply complexity scores to tasks
 		if (complexityReport && complexityReport.complexityAnalysis) {
