@@ -35,7 +35,7 @@ import { createLogWrapper } from '../../tools/utils.js';
 export async function expandTaskDirect(args, log, context = {}) {
 	const { session } = context; // Extract session
 	// Destructure expected args, including projectRoot
-	const { tasksJsonPath, id, num, research, prompt, force, projectRoot, tag } =
+	const { tasksJsonPath, id, num, research, prompt, force, projectRoot, tag, complexityReportPath } =
 		args;
 
 	// Log session root data for debugging
