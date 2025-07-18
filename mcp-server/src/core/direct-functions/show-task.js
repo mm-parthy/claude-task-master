@@ -19,7 +19,7 @@ import { findTasksPath } from '../utils/path-utils.js';
  * @param {string} args.reportPath - Explicit path to the complexity report file.
  * @param {string} [args.status] - Optional status to filter subtasks by.
  * @param {string} args.projectRoot - Absolute path to the project root directory (already normalized by tool).
- * @param {string} args.tag - Tag for the task (optional)
+ * @param {string} [args.tag] - Tag for the task
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
