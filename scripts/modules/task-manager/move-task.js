@@ -62,7 +62,7 @@ async function moveTask(
 
 	// Single move logic
 	// Read the raw data without tag resolution to preserve tagged structure
-	let rawData = readJSON(tasksPath, projectRoot, tag); // No tag parameter
+	let rawData = readJSON(tasksPath, projectRoot, tag);
 
 	// Handle the case where readJSON returns resolved data with _rawTaggedData
 	if (rawData && rawData._rawTaggedData) {
