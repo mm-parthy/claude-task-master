@@ -78,7 +78,10 @@ export function registerListTasksTool(server) {
 				// Resolve the path to complexity report
 				let complexityReportPath;
 				try {
-					complexityReportPath = resolveComplexityReportPath(args, session);
+					complexityReportPath = resolveComplexityReportPath(
+						{ ...args, tag: resolvedTag },
+						session
+					);
 				} catch (error) {
 					log.error(`Error finding complexity report: ${error.message}`);
 					// This is optional, so we don't fail the operation

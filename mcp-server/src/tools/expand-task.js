@@ -10,7 +10,10 @@ import {
 	withNormalizedProjectRoot
 } from './utils.js';
 import { expandTaskDirect } from '../core/task-master-core.js';
-import { findTasksPath } from '../core/utils/path-utils.js';
+import {
+	findTasksPath,
+	findComplexityReportPath
+} from '../core/utils/path-utils.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
 
 /**
@@ -70,6 +73,11 @@ export function registerExpandTaskTool(server) {
 					);
 				}
 
+				const complexityReportPath = findComplexityReportPath(
+					{ ...args, tag: resolvedTag },
+					log
+				);
+
 				const result = await expandTaskDirect(
 					{
 						tasksJsonPath: tasksJsonPath,
@@ -78,7 +86,7 @@ export function registerExpandTaskTool(server) {
 						research: args.research,
 						prompt: args.prompt,
 						force: args.force,
-
+						complexityReportPath,
 						projectRoot: args.projectRoot,
 						tag: resolvedTag
 					},

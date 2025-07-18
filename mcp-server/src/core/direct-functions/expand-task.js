@@ -192,6 +192,7 @@ export async function expandTaskDirect(args, log, context = {}) {
 				useResearch,
 				additionalContext,
 				{
+					complexityReportPath,
 					mcpLog,
 					session,
 					projectRoot,

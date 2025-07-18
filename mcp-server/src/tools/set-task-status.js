@@ -58,7 +58,10 @@ export function registerSetTaskStatusTool(server) {
 						args.tag ? `in tag: ${args.tag}` : 'in current tag'
 					}`
 				);
-
+				const resolvedTag = resolveTag({
+					projectRoot: args.projectRoot,
+					tag: args.tag
+				});
 				// Use args.projectRoot directly (guaranteed by withNormalizedProjectRoot)
 				let tasksJsonPath;
 				try {
@@ -78,7 +81,8 @@ export function registerSetTaskStatusTool(server) {
 					complexityReportPath = findComplexityReportPath(
 						{
 							projectRoot: args.projectRoot,
-							complexityReport: args.complexityReport
+							complexityReport: args.complexityReport,
+							tag: resolvedTag
 						},
 						log
 					);
@@ -86,10 +90,6 @@ export function registerSetTaskStatusTool(server) {
 					log.error(`Error finding complexity report: ${error.message}`);
 				}
 
-				const resolvedTag = resolveTag({
-					projectRoot: args.projectRoot,
-					tag: args.tag
-				});
 				const result = await setTaskStatusDirect(
 					{
 						tasksJsonPath: tasksJsonPath,

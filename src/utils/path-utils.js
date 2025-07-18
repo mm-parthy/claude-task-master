@@ -272,6 +272,14 @@ export function findComplexityReportPath(
 	];
 
 	const fileNames = ['task-complexity-report.json', 'complexity-report.json'];
+	// put TagAwareFilePath here at first position if tag is not master
+	// TODO: Refactor out into the new src/task-master.js
+	if (args?.tag && args?.tag !== 'master') {
+		fileNames.unshift(
+			`task-complexity-report_${args.tag}.json`,
+			`complexity-report_${args.tag}.json`
+		);
+	}
 
 	for (const location of locations) {
 		for (const fileName of fileNames) {
