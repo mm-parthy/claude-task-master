@@ -7,8 +7,7 @@ import {
 	readJSON,
 	truncate,
 	readComplexityReport,
-	addComplexityToTask,
-	getTagAwareFilePath
+	addComplexityToTask
 } from '../utils.js';
 import findNextTask from './find-next-task.js';
 
