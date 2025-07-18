@@ -826,7 +826,8 @@ function registerCommands(programInstance) {
 			let taskMaster;
 			try {
 				const initOptions = {
-					prdPath: file || options.input || true
+					prdPath: file || options.input || true,
+					tag: options.tag
 				};
 				// Only include tasksPath if output is explicitly specified
 				if (options.output) {
@@ -852,8 +853,7 @@ function registerCommands(programInstance) {
 			const useAppend = append;
 
 			// Resolve tag using standard pattern
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -966,7 +966,8 @@ function registerCommands(programInstance) {
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			});
 
 			const fromId = parseInt(options.from, 10); // Validation happens here
@@ -976,8 +977,7 @@ function registerCommands(programInstance) {
 			const tasksPath = taskMaster.getTasksPath();
 
 			// Resolve tag using standard pattern
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -1066,13 +1066,13 @@ function registerCommands(programInstance) {
 			try {
 				// Initialize TaskMaster
 				const taskMaster = initTaskMaster({
-					tasksPath: options.file || true
+					tasksPath: options.file || true,
+					tag: options.tag
 				});
 				const tasksPath = taskMaster.getTasksPath();
 
 				// Resolve tag using standard pattern
-				const tag =
-					options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+				const tag = taskMaster.getCurrentTag();
 
 				// Show current tag context
 				displayCurrentTagIndicator(tag);
@@ -1404,12 +1404,12 @@ function registerCommands(programInstance) {
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			});
 
 			const outputDir = options.output;
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			console.log(
 				chalk.blue(`Generating task files from: ${taskMaster.getTasksPath()}`)
@@ -1445,7 +1445,8 @@ function registerCommands(programInstance) {
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			});
 
 			const taskId = options.id;
@@ -1465,9 +1466,8 @@ function registerCommands(programInstance) {
 
 				process.exit(1);
 			}
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
-			// Resolve tag using standard pattern and show current tag context
+			const tag = taskMaster.getCurrentTag();
+
 			displayCurrentTagIndicator(tag);
 
 			console.log(
@@ -1571,12 +1571,10 @@ function registerCommands(programInstance) {
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const initOptions = {
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			};
 
-			if (options.tag) {
-				initOptions.tag = options.tag;
-			}
 			if (options.complexityReport) {
 				initOptions.complexityReportPath = options.complexityReport;
 			}
@@ -1687,15 +1685,14 @@ function registerCommands(programInstance) {
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const initOptions = {
-				tasksPath: options.file || true // Tasks file is required to analyze
+				tasksPath: options.file || true, // Tasks file is required to analyze
+				tag: options.tag
 			};
 			// Only include complexityReportPath if output is explicitly specified
 			if (options.output) {
 				initOptions.complexityReportPath = options.output;
 			}
-			if (options.tag) {
-				initOptions.tag = options.tag;
-			}
+
 			const taskMaster = initTaskMaster(initOptions);
 
 			const modelOverride = options.model;
@@ -1791,11 +1788,10 @@ function registerCommands(programInstance) {
 		.action(async (prompt, options) => {
 			// Initialize TaskMaster
 			const initOptions = {
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			};
-			if (options.tag) {
-				initOptions.tag = options.tag;
-			}
+
 			const taskMaster = initTaskMaster(initOptions);
 
 			// Parameter validation
@@ -2132,11 +2128,11 @@ ${result.result}
 
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			});
 
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2235,7 +2231,8 @@ ${result.result}
 			// Correctly determine projectRoot
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			});
 
 			const projectRoot = taskMaster.getProjectRoot();
@@ -2325,16 +2322,23 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const tasksPath = options.file || TASKMASTER_TASKS_FILE;
-			const reportPath = options.report;
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
+
+			if (options.report && options.report !== COMPLEXITY_REPORT_FILE) {
+				initOptions.complexityReportPath = options.report;
+			}
 
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag,
+				complexityReportPath: options.report || false
 			});
 
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			const context = {
 				projectRoot: taskMaster.getProjectRoot(),
@@ -2387,8 +2391,7 @@ ${result.result}
 
 			const idArg = taskId || options.id;
 			const statusFilter = options.status;
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2438,17 +2441,19 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
+
 			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
-			});
+			const taskMaster = initTaskMaster(initOptions);
 
 			const taskId = options.id;
 			const dependencyId = options.dependsOn;
 
 			// Resolve tag using standard pattern
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2493,17 +2498,19 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
+
 			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
-			});
+			const taskMaster = initTaskMaster(initOptions);
 
 			const taskId = options.id;
 			const dependencyId = options.dependsOn;
 
 			// Resolve tag using standard pattern
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2548,14 +2555,16 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
+
 			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
-			});
+			const taskMaster = initTaskMaster(initOptions);
 
 			// Resolve tag using standard pattern
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2576,14 +2585,16 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
+			const initOptions = {
+				tasksPath: options.file || true,
+				tag: options.tag
+			};
+
 			// Initialize TaskMaster
-			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
-			});
+			const taskMaster = initTaskMaster(initOptions);
 
 			// Resolve tag using standard pattern
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2604,18 +2615,16 @@ ${result.result}
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
 		.action(async (options) => {
-			const overrides = {};
-
-			if (options.tag) {
-				overrides.tag = options.tag;
-			}
+			const initOptions = {
+				tag: options.tag
+			};
 
 			if (options.file && options.file !== COMPLEXITY_REPORT_FILE) {
-				overrides.complexityReportPath = options.file;
+				initOptions.complexityReportPath = options.file;
 			}
 
 			// Initialize TaskMaster
-			const taskMaster = initTaskMaster(overrides);
+			const taskMaster = initTaskMaster(initOptions);
 
 			// Show current tag context
 			displayCurrentTagIndicator(taskMaster.getCurrentTag());
@@ -2650,7 +2659,8 @@ ${result.result}
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			});
 
 			const parentId = options.parent;
@@ -2658,8 +2668,7 @@ ${result.result}
 			const generateFiles = !options.skipGenerate;
 
 			// Resolve tag using standard pattern
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -2834,13 +2843,14 @@ ${result.result}
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			});
 
 			const subtaskIds = options.id;
 			const convertToTask = options.convert || false;
 			const generateFiles = !options.skipGenerate;
-			const tag = options.tag;
+			const tag = taskMaster.getCurrentTag();
 
 			if (!subtaskIds) {
 				console.error(
@@ -3135,14 +3145,14 @@ ${result.result}
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			});
 
 			const taskIdsString = options.id;
 
 			// Resolve tag using standard pattern
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			// Show current tag context
 			displayCurrentTagIndicator(tag);
@@ -3786,13 +3796,13 @@ Examples:
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			});
 
 			const sourceId = options.from;
 			const destinationId = options.to;
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			if (!sourceId || !destinationId) {
 				console.error(
@@ -4224,14 +4234,14 @@ Examples:
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
-				tasksPath: options.file || true
+				tasksPath: options.file || true,
+				tag: options.tag
 			});
 
 			const withSubtasks = options.withSubtasks || false;
 			const status = options.status || null;
 
-			const tag =
-				options.tag || getCurrentTag(taskMaster.getProjectRoot()) || 'master';
+			const tag = taskMaster.getCurrentTag();
 
 			console.log(
 				chalk.blue(
