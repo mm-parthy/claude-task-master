@@ -21,7 +21,8 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 		tasks.find((t) => t.id === parseInt(id))
 	),
 	addComplexityToTask: jest.fn(),
-	readComplexityReport: jest.fn(() => null)
+	readComplexityReport: jest.fn(() => null),
+	getTagAwareFilePath: jest.fn((tag, path) => '/mock/tagged/report.json')
 }));
 
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({

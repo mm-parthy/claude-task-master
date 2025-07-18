@@ -56,6 +56,30 @@ jest.unstable_mockModule(
 	})
 );
 
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/prompt-manager.js',
+	() => ({
+		default: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn().mockReturnValue('Update the subtask')
+		}),
+		getPromptManager: jest.fn().mockReturnValue({
+			loadPrompt: jest.fn().mockReturnValue('Update the subtask')
+		})
+	})
+);
+
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/utils/contextGatherer.js',
+	() => ({
+		ContextGatherer: jest.fn().mockImplementation(() => ({
+			gather: jest.fn().mockReturnValue({
+				fullContext: '',
+				summary: ''
+			})
+		}))
+	})
+);
+
 // Import mocked utils to leverage mocks later
 const { readJSON, log } = await import(
 	'../../../../../scripts/modules/utils.js'
@@ -140,5 +164,38 @@ describe('updateSubtaskById validation', () => {
 		).rejects.toThrow('Parent task with ID 1 not found');
 		// log called with error level
 		expect(log).toHaveBeenCalled();
+	});
+
+	test('successfully updates subtask with valid inputs', async () => {
+		const fs = await import('fs');
+		const { writeJSON } = await import(
+			'../../../../../scripts/modules/utils.js'
+		);
+
+		fs.existsSync.mockReturnValue(true);
+		readJSON.mockReturnValue({
+			tag: 'master',
+			tasks: [
+				{
+					id: 1,
+					title: 'Parent Task',
+					subtasks: [{ id: 1, title: 'Original subtask', status: 'pending' }]
+				}
+			]
+		});
+
+		// updateSubtaskById doesn't return a value on success, it just executes
+		await expect(
+			updateSubtaskById(
+				'tasks/tasks.json',
+				'1.1',
+				'Update this subtask',
+				false,
+				{ tag: 'master' },
+				'json'
+			)
+		).resolves.not.toThrow();
+
+		expect(writeJSON).toHaveBeenCalled();
 	});
 });

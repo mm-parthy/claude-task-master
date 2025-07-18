@@ -7,7 +7,8 @@ import {
 	readJSON,
 	truncate,
 	readComplexityReport,
-	addComplexityToTask
+	addComplexityToTask,
+	getTagAwareFilePath
 } from '../utils.js';
 import findNextTask from './find-next-task.js';
 
@@ -48,8 +49,9 @@ function listTasks(
 		}
 
 		// Add complexity scores to tasks if report exists
-		//TODO: add tag to readComplexityReport and use it here
-		const complexityReport = readComplexityReport(reportPath);
+		// Load the complexity report for the active tag
+		const reportPathWithTag = getTagAwareFilePath(tag, reportPath);
+		const complexityReport = readComplexityReport(reportPathWithTag);
 		// Apply complexity scores to tasks
 		if (complexityReport && complexityReport.complexityAnalysis) {
 			data.tasks.forEach((task) => addComplexityToTask(task, complexityReport));
