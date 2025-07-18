@@ -26,9 +26,9 @@ import {
  * @param {string} reportPath - Path to the complexity report
  * @param {boolean} withSubtasks - Whether to show subtasks
  * @param {string} outputFormat - Output format (text or json)
- * @param {Object} [context] - Optional context object containing projectRoot and other options
- * @param {string} [context.projectRoot] - Project root path
- * @param {string} [context.tag] - Tag for the task
+ * @param {Object} context - Context object (required)
+ * @param {string} context.projectRoot - Project root path
+ * @param {string} context.tag - Tag for the task
  * @returns {Object} - Task list result for json format
  */
 function listTasks(
