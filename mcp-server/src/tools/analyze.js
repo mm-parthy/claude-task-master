@@ -15,6 +15,7 @@ import { analyzeTaskComplexityDirect } from '../core/task-master-core.js'; // As
 import { findTasksPath } from '../core/utils/path-utils.js';
 import { resolveTag } from '../../../scripts/modules/utils.js';
 import { COMPLEXITY_REPORT_FILE } from '../../../src/constants/paths.js';
+import { resolveComplexityReportOutputPath } from '../../../src/utils/path-utils.js';
 
 /**
  * Register the analyze_project_complexity tool
@@ -101,9 +102,14 @@ export function registerAnalyzeProjectComplexityTool(server) {
 					);
 				}
 
-				const outputPath = args.output
-					? path.resolve(args.projectRoot, args.output)
-					: path.resolve(args.projectRoot, COMPLEXITY_REPORT_FILE);
+				const outputPath = resolveComplexityReportOutputPath(
+					args.output,
+					{
+						projectRoot: args.projectRoot,
+						tag: resolvedTag
+					},
+					log
+				);
 
 				log.info(`${toolName}: Report output path: ${outputPath}`);
 
