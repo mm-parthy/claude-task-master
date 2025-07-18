@@ -26,7 +26,7 @@ import { TASKMASTER_TASKS_FILE } from '../../../../src/constants/paths.js';
  * @param {boolean} args.force - Whether to force parsing.
  * @param {boolean} args.append - Whether to append to the output file.
  * @param {boolean} args.research - Whether to use research mode.
- * @param {string} args.tag - Tag for the task.
+ * @param {string} args.tag - Tag context for organizing tasks into separate task lists.
  * @param {Object} log - Logger object.
  * @param {Object} context - Context object containing session data.
  * @returns {Promise<Object>} - Result object with success status and data/error information.
