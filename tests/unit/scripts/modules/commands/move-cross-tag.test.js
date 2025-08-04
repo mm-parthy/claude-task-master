@@ -51,18 +51,13 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 	});
 
 	describe('Cross-Tag Move Logic', () => {
-		it('should handle basic cross-tag move', async () => {
-			const options = {
-				from: '1',
-				fromTag: 'backlog',
-				toTag: 'in-progress',
-				withDependencies: false,
-				ignoreDependencies: false,
-				force: false
-			};
-
+		// Helper function to simulate cross-tag move logic and verify expectations
+		const simulateCrossTagMove = async (
+			options,
+			expectedMessage = 'Successfully moved 1 tasks from "backlog" to "in-progress"'
+		) => {
 			mockMoveTasksBetweenTags.mockResolvedValue({
-				message: 'Successfully moved 1 tasks from "backlog" to "in-progress"'
+				message: expectedMessage
 			});
 
 			// Simulate the move logic
@@ -96,12 +91,25 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				'backlog',
 				'in-progress',
 				{
-					withDependencies: false,
-					ignoreDependencies: false,
-					force: false
+					withDependencies: options.withDependencies || false,
+					ignoreDependencies: options.ignoreDependencies || false,
+					force: options.force || false
 				},
 				{ projectRoot: '/test/project' }
 			);
+		};
+
+		it('should handle basic cross-tag move', async () => {
+			const options = {
+				from: '1',
+				fromTag: 'backlog',
+				toTag: 'in-progress',
+				withDependencies: false,
+				ignoreDependencies: false,
+				force: false
+			};
+
+			await simulateCrossTagMove(options);
 		});
 
 		it('should handle --with-dependencies flag', async () => {
@@ -114,46 +122,9 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				force: false
 			};
 
-			mockMoveTasksBetweenTags.mockResolvedValue({
-				message: 'Successfully moved 2 tasks from "backlog" to "in-progress"'
-			});
-
-			// Simulate the move logic
-			const sourceId = options.from;
-			const fromTag = options.fromTag;
-			const toTag = options.toTag;
-			const sourceTag = fromTag || mockTaskMaster.getCurrentTag();
-			const isCrossTagMove = sourceTag && toTag && sourceTag !== toTag;
-
-			if (isCrossTagMove) {
-				const sourceIds = sourceId.split(',').map((id) => id.trim());
-				const moveOptions = {
-					withDependencies: options.withDependencies || false,
-					ignoreDependencies: options.ignoreDependencies || false,
-					force: options.force || false
-				};
-
-				await mockMoveTasksBetweenTags(
-					mockTaskMaster.getTasksPath(),
-					sourceIds,
-					sourceTag,
-					toTag,
-					moveOptions,
-					{ projectRoot: mockTaskMaster.getProjectRoot() }
-				);
-			}
-
-			expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
-				'/test/path/tasks.json',
-				['1'],
-				'backlog',
-				'in-progress',
-				{
-					withDependencies: true,
-					ignoreDependencies: false,
-					force: false
-				},
-				{ projectRoot: '/test/project' }
+			await simulateCrossTagMove(
+				options,
+				'Successfully moved 2 tasks from "backlog" to "in-progress"'
 			);
 		});
 
@@ -167,47 +138,7 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				force: false
 			};
 
-			mockMoveTasksBetweenTags.mockResolvedValue({
-				message: 'Successfully moved 1 tasks from "backlog" to "in-progress"'
-			});
-
-			// Simulate the move logic
-			const sourceId = options.from;
-			const fromTag = options.fromTag;
-			const toTag = options.toTag;
-			const sourceTag = fromTag || mockTaskMaster.getCurrentTag();
-			const isCrossTagMove = sourceTag && toTag && sourceTag !== toTag;
-
-			if (isCrossTagMove) {
-				const sourceIds = sourceId.split(',').map((id) => id.trim());
-				const moveOptions = {
-					withDependencies: options.withDependencies || false,
-					ignoreDependencies: options.ignoreDependencies || false,
-					force: options.force || false
-				};
-
-				await mockMoveTasksBetweenTags(
-					mockTaskMaster.getTasksPath(),
-					sourceIds,
-					sourceTag,
-					toTag,
-					moveOptions,
-					{ projectRoot: mockTaskMaster.getProjectRoot() }
-				);
-			}
-
-			expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
-				'/test/path/tasks.json',
-				['1'],
-				'backlog',
-				'in-progress',
-				{
-					withDependencies: false,
-					ignoreDependencies: true,
-					force: false
-				},
-				{ projectRoot: '/test/project' }
-			);
+			await simulateCrossTagMove(options);
 		});
 
 		it('should handle --force flag', async () => {
@@ -220,47 +151,7 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				force: true
 			};
 
-			mockMoveTasksBetweenTags.mockResolvedValue({
-				message: 'Successfully moved 1 tasks from "backlog" to "in-progress"'
-			});
-
-			// Simulate the move logic
-			const sourceId = options.from;
-			const fromTag = options.fromTag;
-			const toTag = options.toTag;
-			const sourceTag = fromTag || mockTaskMaster.getCurrentTag();
-			const isCrossTagMove = sourceTag && toTag && sourceTag !== toTag;
-
-			if (isCrossTagMove) {
-				const sourceIds = sourceId.split(',').map((id) => id.trim());
-				const moveOptions = {
-					withDependencies: options.withDependencies || false,
-					ignoreDependencies: options.ignoreDependencies || false,
-					force: options.force || false
-				};
-
-				await mockMoveTasksBetweenTags(
-					mockTaskMaster.getTasksPath(),
-					sourceIds,
-					sourceTag,
-					toTag,
-					moveOptions,
-					{ projectRoot: mockTaskMaster.getProjectRoot() }
-				);
-			}
-
-			expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
-				'/test/path/tasks.json',
-				['1'],
-				'backlog',
-				'in-progress',
-				{
-					withDependencies: false,
-					ignoreDependencies: false,
-					force: true
-				},
-				{ projectRoot: '/test/project' }
-			);
+			await simulateCrossTagMove(options);
 		});
 	});
 
