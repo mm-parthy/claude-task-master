@@ -190,39 +190,60 @@ describe('Cross-Tag Move CLI Integration', () => {
 		} else {
 			// Handle case where both tags are provided but are the same
 			if (sourceTag && toTag && sourceTag === toTag) {
-				const error = new Error(
-					`Source and target tags are the same ("${sourceTag}")`
-				);
-				console.error(chalk.red(`Error: ${error.message}`));
-				console.log(
-					chalk.yellow(
-						'For within-tag moves, use: task-master move --from=<sourceId> --to=<destinationId>'
-					)
-				);
-				console.log(
-					chalk.yellow(
-						'For cross-tag moves, use different tags: task-master move --from=<sourceId> --from-tag=<sourceTag> --to-tag=<targetTag>'
-					)
-				);
-				throw error;
-			}
+				// If both tags are the same and we have destinationId, treat as within-tag move
+				if (destinationId) {
+					if (!sourceId) {
+						const error = new Error(
+							'Both --from and --to parameters are required for within-tag moves'
+						);
+						console.error(chalk.red(`Error: ${error.message}`));
+						throw error;
+					}
 
-			// Within-tag move logic (existing functionality)
-			if (!sourceId || !destinationId) {
-				const error = new Error(
-					'Both --from and --to parameters are required for within-tag moves'
-				);
-				console.error(chalk.red(`Error: ${error.message}`));
-				throw error;
-			}
+					// Call the existing moveTask function for within-tag moves
+					try {
+						await moveTaskModule.default(sourceId, destinationId);
+						console.log(chalk.green('Successfully moved task'));
+					} catch (error) {
+						console.error(chalk.red(`Error: ${error.message}`));
+						throw error;
+					}
+				} else {
+					// Same tags but no destinationId - this is an error
+					const error = new Error(
+						`Source and target tags are the same ("${sourceTag}") but no destination specified`
+					);
+					console.error(chalk.red(`Error: ${error.message}`));
+					console.log(
+						chalk.yellow(
+							'For within-tag moves, use: task-master move --from=<sourceId> --to=<destinationId>'
+						)
+					);
+					console.log(
+						chalk.yellow(
+							'For cross-tag moves, use different tags: task-master move --from=<sourceId> --from-tag=<sourceTag> --to-tag=<targetTag>'
+						)
+					);
+					throw error;
+				}
+			} else {
+				// Within-tag move logic (existing functionality)
+				if (!sourceId || !destinationId) {
+					const error = new Error(
+						'Both --from and --to parameters are required for within-tag moves'
+					);
+					console.error(chalk.red(`Error: ${error.message}`));
+					throw error;
+				}
 
-			// Call the existing moveTask function for within-tag moves
-			try {
-				await moveTaskModule.default(sourceId, destinationId);
-				console.log(chalk.green('Successfully moved task'));
-			} catch (error) {
-				console.error(chalk.red(`Error: ${error.message}`));
-				throw error;
+				// Call the existing moveTask function for within-tag moves
+				try {
+					await moveTaskModule.default(sourceId, destinationId);
+					console.log(chalk.green('Successfully moved task'));
+				} catch (error) {
+					console.error(chalk.red(`Error: ${error.message}`));
+					throw error;
+				}
 			}
 		}
 	}
@@ -232,11 +253,11 @@ describe('Cross-Tag Move CLI Integration', () => {
 		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
 		mockGenerateTaskFiles.mockResolvedValue(undefined);
 
-		try {
-			await moveAction(options);
-		} catch (error) {
-			// Expected to throw due to process.exit mock - no action needed
-		}
+		const options = {
+			from: '2',
+			fromTag: 'backlog',
+			toTag: 'in-progress'
+		};
 
 		await moveAction(options);
 
@@ -423,18 +444,20 @@ describe('Cross-Tag Move CLI Integration', () => {
 		const options = {
 			from: '1',
 			fromTag: 'backlog',
-			toTag: 'backlog' // Same tag
+			toTag: 'backlog' // Same tag but no destination
 		};
 
 		const { errorMessages, logMessages, restore } = captureConsoleAndExit();
 
 		await expect(moveAction(options)).rejects.toThrow(
-			'Source and target tags are the same ("backlog")'
+			'Source and target tags are the same ("backlog") but no destination specified'
 		);
 
 		expect(
 			errorMessages.some((msg) =>
-				msg.includes('Source and target tags are the same')
+				msg.includes(
+					'Source and target tags are the same ("backlog") but no destination specified'
+				)
 			)
 		).toBe(true);
 		expect(
@@ -825,5 +848,35 @@ describe('Cross-Tag Move CLI Integration', () => {
 
 		expect(mockMoveTask).toHaveBeenCalledWith('1', '2');
 		expect(mockMoveTasksBetweenTags).not.toHaveBeenCalled();
+	});
+
+	it('should fail when both tags are the same but no destination is provided', async () => {
+		const options = {
+			from: '1',
+			fromTag: 'master',
+			toTag: 'master' // Same tag but no destination
+		};
+
+		const { errorMessages, logMessages, restore } = captureConsoleAndExit();
+
+		await expect(moveAction(options)).rejects.toThrow(
+			'Source and target tags are the same ("master") but no destination specified'
+		);
+
+		expect(
+			errorMessages.some((msg) =>
+				msg.includes(
+					'Source and target tags are the same ("master") but no destination specified'
+				)
+			)
+		).toBe(true);
+		expect(
+			logMessages.some((msg) => msg.includes('For within-tag moves'))
+		).toBe(true);
+		expect(logMessages.some((msg) => msg.includes('For cross-tag moves'))).toBe(
+			true
+		);
+
+		restore();
 	});
 });

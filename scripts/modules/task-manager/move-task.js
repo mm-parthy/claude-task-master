@@ -590,8 +590,10 @@ async function moveTasksBetweenTags(
 							.map((id) => parseInt(id, 10));
 						depTask = allTasks.find((t) => t.id === parentId);
 					} else {
-						// It's a regular task ID
-						depTask = allTasks.find((t) => t.id === depId);
+						// It's a regular task ID - normalize to number for comparison
+						const normalizedDepId =
+							typeof depId === 'string' ? parseInt(depId, 10) : depId;
+						depTask = allTasks.find((t) => t.id === normalizedDepId);
 					}
 					return !depTask || depTask.tag === targetTag;
 				});
@@ -664,8 +666,12 @@ function performCrossTagMove(
 
 	// Move each task from source to target tag
 	taskIds.forEach((taskId) => {
+		// Normalize taskId to number for comparison
+		const normalizedTaskId =
+			typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
+
 		const sourceTaskIndex = rawData[sourceTag].tasks.findIndex(
-			(t) => t.id === taskId
+			(t) => t.id === normalizedTaskId
 		);
 
 		if (sourceTaskIndex === -1) {
@@ -676,7 +682,7 @@ function performCrossTagMove(
 
 		// Check for ID conflicts in target tag
 		const existingTaskIndex = rawData[targetTag].tasks.findIndex(
-			(t) => t.id === taskId
+			(t) => t.id === normalizedTaskId
 		);
 		if (existingTaskIndex !== -1) {
 			throw new Error(
@@ -728,7 +734,12 @@ function detectIdConflicts(taskIds, targetTag, rawData) {
 	}
 
 	taskIds.forEach((taskId) => {
-		const existingTask = rawData[targetTag].tasks.find((t) => t.id === taskId);
+		// Normalize taskId to number for comparison
+		const normalizedTaskId =
+			typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
+		const existingTask = rawData[targetTag].tasks.find(
+			(t) => t.id === normalizedTaskId
+		);
 		if (existingTask) {
 			conflicts.push(taskId);
 		}

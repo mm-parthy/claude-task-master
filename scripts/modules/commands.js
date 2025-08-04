@@ -48,6 +48,8 @@ import {
 	validateStrength
 } from './task-manager.js';
 
+import { moveTasksBetweenTags } from './task-manager/move-task.js';
+
 import {
 	createTag,
 	deleteTag,
@@ -4076,10 +4078,6 @@ Examples:
 
 			if (isCrossTagMove) {
 				// Cross-tag move logic
-				// Import the cross-tag move function
-				const { moveTasksBetweenTags } = await import(
-					'./task-manager/move-task.js'
-				);
 
 				if (!sourceId) {
 					console.error(

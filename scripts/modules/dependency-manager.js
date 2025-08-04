@@ -1278,10 +1278,10 @@ function findDependencyTask(depId, taskId, allTasks) {
 			const [parentId] = taskId.split('.');
 			depTask = allTasks.find((t) => {
 				// Check if this is a subtask of the same parent
+				// Task IDs are numeric, only subtask references use dot notation
 				return (
 					t &&
 					t.id &&
-					typeof t.id === 'string' &&
 					t.id.includes('.') &&
 					t.id.startsWith(parentId + '.') &&
 					parseInt(t.id.split('.')[1], 10) === numericId
