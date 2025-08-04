@@ -4034,7 +4034,7 @@ Examples:
 	// move-task command
 	programInstance
 		.command('move')
-		.description('Move a task or subtask to a new position')
+		.description('Move tasks between tags or reorder within tags')
 		.option(
 			'-f, --file <file>',
 			'Path to the tasks file',
@@ -4049,6 +4049,11 @@ Examples:
 			'ID of the destination (e.g., "7" or "7.3"). Must match the number of source IDs if comma-separated'
 		)
 		.option('--tag <tag>', 'Specify tag context for task operations')
+		.option('--from-tag <tag>', 'Source tag for cross-tag moves')
+		.option('--to-tag <tag>', 'Target tag for cross-tag moves')
+		.option('--with-dependencies', 'Move dependent tasks along with main task')
+		.option('--ignore-dependencies', 'Break cross-tag dependencies during move')
+		.option('--force', 'Force move even with dependency conflicts')
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
@@ -4058,121 +4063,233 @@ Examples:
 
 			const sourceId = options.from;
 			const destinationId = options.to;
+			const fromTag = options.fromTag;
+			const toTag = options.toTag;
+
 			const tag = taskMaster.getCurrentTag();
 
-			if (!sourceId || !destinationId) {
-				console.error(
-					chalk.red('Error: Both --from and --to parameters are required')
-				);
-				console.log(
-					chalk.yellow(
-						'Usage: task-master move --from=<sourceId> --to=<destinationId>'
-					)
-				);
-				process.exit(1);
-			}
+			// Get the source tag - fallback to current tag if not provided
+			const sourceTag = fromTag || taskMaster.getCurrentTag();
 
-			// Check if we're moving multiple tasks (comma-separated IDs)
-			const sourceIds = sourceId.split(',').map((id) => id.trim());
-			const destinationIds = destinationId.split(',').map((id) => id.trim());
+			// Check if this is a cross-tag move (different tags)
+			const isCrossTagMove = sourceTag && toTag && sourceTag !== toTag;
 
-			// Validate that the number of source and destination IDs match
-			if (sourceIds.length !== destinationIds.length) {
-				console.error(
-					chalk.red(
-						'Error: The number of source and destination IDs must match'
-					)
-				);
-				console.log(
-					chalk.yellow('Example: task-master move --from=5,6,7 --to=10,11,12')
-				);
-				process.exit(1);
-			}
+			if (isCrossTagMove) {
+				// Cross-tag move logic
+				if (!sourceId) {
+					console.error(
+						chalk.red('Error: --from parameter is required for cross-tag moves')
+					);
+					console.log(
+						chalk.yellow(
+							'Usage: task-master move --from=<sourceId> --from-tag=<sourceTag> --to-tag=<targetTag>'
+						)
+					);
+					process.exit(1);
+				}
 
-			// If moving multiple tasks
-			if (sourceIds.length > 1) {
+				// Import the cross-tag move function
+				const { moveTasksBetweenTags } = await import(
+					'./task-manager/move-task.js'
+				);
+
+				const sourceIds = sourceId.split(',').map((id) => id.trim());
+				const moveOptions = {
+					withDependencies: options.withDependencies || false,
+					ignoreDependencies: options.ignoreDependencies || false,
+					force: options.force || false
+				};
+
 				console.log(
 					chalk.blue(
-						`Moving multiple tasks: ${sourceIds.join(', ')} to ${destinationIds.join(', ')}...`
+						`Moving tasks ${sourceIds.join(', ')} from "${sourceTag}" to "${toTag}"...`
 					)
 				);
 
 				try {
-					// Read tasks data once to validate destination IDs
-					const tasksData = readJSON(
+					const result = await moveTasksBetweenTags(
 						taskMaster.getTasksPath(),
-						taskMaster.getProjectRoot(),
-						tag
+						sourceIds,
+						sourceTag,
+						toTag,
+						moveOptions,
+						{ projectRoot: taskMaster.getProjectRoot() }
 					);
-					if (!tasksData || !tasksData.tasks) {
-						console.error(
-							chalk.red(`Error: Invalid or missing tasks file at ${tasksPath}`)
-						);
-						process.exit(1);
-					}
 
-					// Move tasks one by one
-					for (let i = 0; i < sourceIds.length; i++) {
-						const fromId = sourceIds[i];
-						const toId = destinationIds[i];
+					console.log(chalk.green(`✓ ${result.message}`));
 
-						// Skip if source and destination are the same
-						if (fromId === toId) {
-							console.log(
-								chalk.yellow(`Skipping ${fromId} -> ${toId} (same ID)`)
-							);
-							continue;
-						}
-
-						console.log(
-							chalk.blue(`Moving task/subtask ${fromId} to ${toId}...`)
-						);
-						try {
-							await moveTask(
-								taskMaster.getTasksPath(),
-								fromId,
-								toId,
-								i === sourceIds.length - 1,
-								{ projectRoot: taskMaster.getProjectRoot(), tag }
-							);
-							console.log(
-								chalk.green(
-									`✓ Successfully moved task/subtask ${fromId} to ${toId}`
-								)
-							);
-						} catch (error) {
-							console.error(
-								chalk.red(`Error moving ${fromId} to ${toId}: ${error.message}`)
-							);
-							// Continue with the next task rather than exiting
-						}
-					}
+					// Generate task files for the affected tags
+					await generateTaskFiles(
+						taskMaster.getTasksPath(),
+						path.dirname(taskMaster.getTasksPath()),
+						{ tag: sourceTag, projectRoot: taskMaster.getProjectRoot() }
+					);
+					await generateTaskFiles(
+						taskMaster.getTasksPath(),
+						path.dirname(taskMaster.getTasksPath()),
+						{ tag: toTag, projectRoot: taskMaster.getProjectRoot() }
+					);
 				} catch (error) {
 					console.error(chalk.red(`Error: ${error.message}`));
+
+					// Provide helpful error messages for cross-tag dependency conflicts
+					if (error.message.includes('cross-tag dependency conflicts')) {
+						console.log(chalk.cyan('\nResolution options:'));
+						console.log(
+							`  1. Move with dependencies: task-master move --from=${sourceId} --from-tag=${sourceTag} --to-tag=${toTag} --with-dependencies`
+						);
+						console.log(
+							`  2. Break dependencies: task-master move --from=${sourceId} --from-tag=${sourceTag} --to-tag=${toTag} --ignore-dependencies`
+						);
+						console.log(
+							`  3. Validate and fix dependencies: task-master validate-dependencies && task-master fix-dependencies`
+						);
+					}
+
 					process.exit(1);
 				}
 			} else {
-				// Moving a single task (existing logic)
-				console.log(
-					chalk.blue(`Moving task/subtask ${sourceId} to ${destinationId}...`)
-				);
-
-				try {
-					const result = await moveTask(
-						taskMaster.getTasksPath(),
-						sourceId,
-						destinationId,
-						true,
-						{ projectRoot: taskMaster.getProjectRoot(), tag }
-					);
-					console.log(
-						chalk.green(
-							`✓ Successfully moved task/subtask ${sourceId} to ${destinationId}`
+				// Handle case where both tags are provided but are the same
+				if (sourceTag && toTag && sourceTag === toTag) {
+					console.error(
+						chalk.red(
+							`Error: Source and target tags are the same ("${sourceTag}")`
 						)
 					);
-				} catch (error) {
-					console.error(chalk.red(`Error: ${error.message}`));
+					console.log(
+						chalk.yellow(
+							'For within-tag moves, use: task-master move --from=<sourceId> --to=<destinationId>'
+						)
+					);
+					console.log(
+						chalk.yellow(
+							'For cross-tag moves, use different tags: task-master move --from=<sourceId> --from-tag=<sourceTag> --to-tag=<targetTag>'
+						)
+					);
 					process.exit(1);
+				}
+
+				// Within-tag move logic (existing functionality)
+				if (!sourceId || !destinationId) {
+					console.error(
+						chalk.red(
+							'Error: Both --from and --to parameters are required for within-tag moves'
+						)
+					);
+					console.log(
+						chalk.yellow(
+							'Usage: task-master move --from=<sourceId> --to=<destinationId>'
+						)
+					);
+					process.exit(1);
+				}
+
+				// Check if we're moving multiple tasks (comma-separated IDs)
+				const sourceIds = sourceId.split(',').map((id) => id.trim());
+				const destinationIds = destinationId.split(',').map((id) => id.trim());
+
+				// Validate that the number of source and destination IDs match
+				if (sourceIds.length !== destinationIds.length) {
+					console.error(
+						chalk.red(
+							'Error: The number of source and destination IDs must match'
+						)
+					);
+					console.log(
+						chalk.yellow('Example: task-master move --from=5,6,7 --to=10,11,12')
+					);
+					process.exit(1);
+				}
+
+				// If moving multiple tasks
+				if (sourceIds.length > 1) {
+					console.log(
+						chalk.blue(
+							`Moving multiple tasks: ${sourceIds.join(', ')} to ${destinationIds.join(', ')}...`
+						)
+					);
+
+					try {
+						// Read tasks data once to validate destination IDs
+						const tasksData = readJSON(
+							taskMaster.getTasksPath(),
+							taskMaster.getProjectRoot(),
+							tag
+						);
+						if (!tasksData || !tasksData.tasks) {
+							console.error(
+								chalk.red(
+									`Error: Invalid or missing tasks file at ${taskMaster.getTasksPath()}`
+								)
+							);
+							process.exit(1);
+						}
+
+						// Move tasks one by one
+						for (let i = 0; i < sourceIds.length; i++) {
+							const fromId = sourceIds[i];
+							const toId = destinationIds[i];
+
+							// Skip if source and destination are the same
+							if (fromId === toId) {
+								console.log(
+									chalk.yellow(`Skipping ${fromId} -> ${toId} (same ID)`)
+								);
+								continue;
+							}
+
+							console.log(
+								chalk.blue(`Moving task/subtask ${fromId} to ${toId}...`)
+							);
+							try {
+								await moveTask(
+									taskMaster.getTasksPath(),
+									fromId,
+									toId,
+									i === sourceIds.length - 1,
+									{ projectRoot: taskMaster.getProjectRoot(), tag }
+								);
+								console.log(
+									chalk.green(
+										`✓ Successfully moved task/subtask ${fromId} to ${toId}`
+									)
+								);
+							} catch (error) {
+								console.error(
+									chalk.red(
+										`Error moving ${fromId} to ${toId}: ${error.message}`
+									)
+								);
+								// Continue with the next task rather than exiting
+							}
+						}
+					} catch (error) {
+						console.error(chalk.red(`Error: ${error.message}`));
+						process.exit(1);
+					}
+				} else {
+					// Moving a single task (existing logic)
+					console.log(
+						chalk.blue(`Moving task/subtask ${sourceId} to ${destinationId}...`)
+					);
+
+					try {
+						const result = await moveTask(
+							taskMaster.getTasksPath(),
+							sourceId,
+							destinationId,
+							true,
+							{ projectRoot: taskMaster.getProjectRoot(), tag }
+						);
+						console.log(
+							chalk.green(
+								`✓ Successfully moved task/subtask ${sourceId} to ${destinationId}`
+							)
+						);
+					} catch (error) {
+						console.error(chalk.red(`Error: ${error.message}`));
+						process.exit(1);
+					}
 				}
 			}
 		});

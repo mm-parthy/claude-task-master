@@ -2,6 +2,12 @@ import path from 'path';
 import { log, readJSON, writeJSON, setTasksForTag } from '../utils.js';
 import { isTaskDependentOn } from '../task-manager.js';
 import generateTaskFiles from './generate-task-files.js';
+import {
+	validateCrossTagMove,
+	findCrossTagDependencies,
+	getDependentTaskIds,
+	validateSubtaskMove
+} from '../dependency-manager.js';
 
 /**
  * Move one or more tasks/subtasks to new positions
@@ -478,4 +484,286 @@ function moveTaskToNewId(tasks, sourceTaskIndex, sourceTask, destTaskId) {
 	};
 }
 
+/**
+ * Get all tasks from all tags with tag information
+ * @param {Object} rawData - The raw tagged data object
+ * @returns {Array} A flat array of all task objects with tag property
+ */
+function getAllTasksWithTags(rawData) {
+	let allTasks = [];
+	for (const tagName in rawData) {
+		if (
+			Object.prototype.hasOwnProperty.call(rawData, tagName) &&
+			rawData[tagName] &&
+			Array.isArray(rawData[tagName].tasks)
+		) {
+			const tasksWithTag = rawData[tagName].tasks.map((task) => ({
+				...task,
+				tag: tagName
+			}));
+			allTasks = allTasks.concat(tasksWithTag);
+		}
+	}
+	return allTasks;
+}
+
+/**
+ * Move tasks between different tags with dependency handling
+ * @param {string} tasksPath - Path to tasks.json file
+ * @param {Array} taskIds - Array of task IDs to move
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @param {Object} options - Move options
+ * @param {boolean} options.withDependencies - Move dependent tasks along with main task
+ * @param {boolean} options.ignoreDependencies - Break cross-tag dependencies during move
+ * @param {boolean} options.force - Force move even with dependency conflicts
+ * @param {Object} context - Context object containing projectRoot and tag information
+ * @returns {Object} Result object with moved task details
+ */
+async function moveTasksBetweenTags(
+	tasksPath,
+	taskIds,
+	sourceTag,
+	targetTag,
+	options = {},
+	context = {}
+) {
+	const {
+		withDependencies = false,
+		ignoreDependencies = false,
+		force = false
+	} = options;
+	const { projectRoot } = context;
+
+	// Read the raw data without tag resolution to preserve tagged structure
+	let rawData = readJSON(tasksPath, projectRoot, sourceTag);
+
+	// Handle the case where readJSON returns resolved data with _rawTaggedData
+	if (rawData && rawData._rawTaggedData) {
+		rawData = rawData._rawTaggedData;
+	}
+
+	// Validate source and target tags exist
+	if (
+		!rawData ||
+		!rawData[sourceTag] ||
+		!Array.isArray(rawData[sourceTag].tasks)
+	) {
+		throw new Error(`Source tag "${sourceTag}" not found or invalid`);
+	}
+
+	if (!rawData[targetTag]) {
+		// Create target tag if it doesn't exist
+		rawData[targetTag] = { tasks: [] };
+		log('info', `Created new tag "${targetTag}"`);
+	}
+
+	// Get all tasks for validation
+	const allTasks = getAllTasksWithTags(rawData);
+	const sourceTasks = rawData[sourceTag].tasks.filter((t) =>
+		taskIds.includes(t.id)
+	);
+
+	// Validate subtask movement
+	taskIds.forEach((taskId) => {
+		validateSubtaskMove(taskId, sourceTag, targetTag);
+	});
+
+	// Find cross-tag dependencies
+	const crossTagDependencies = findCrossTagDependencies(
+		sourceTasks,
+		sourceTag,
+		targetTag,
+		allTasks
+	);
+
+	if (crossTagDependencies.length > 0) {
+		if (force || ignoreDependencies) {
+			// Break cross-tag dependencies
+			sourceTasks.forEach((task) => {
+				task.dependencies = task.dependencies.filter((depId) => {
+					const depTask = allTasks.find((t) => t.id === depId);
+					return !depTask || depTask.tag === targetTag;
+				});
+			});
+
+			log(
+				'warn',
+				`Removed ${crossTagDependencies.length} cross-tag dependencies`
+			);
+		} else if (withDependencies) {
+			// Move dependent tasks along with main tasks
+			const dependentTaskIds = getDependentTaskIds(
+				sourceTasks,
+				crossTagDependencies,
+				allTasks
+			);
+			const allTaskIdsToMove = [...new Set([...taskIds, ...dependentTaskIds])];
+
+			log(
+				'info',
+				`Moving ${allTaskIdsToMove.length} tasks (including dependencies)`
+			);
+			return performCrossTagMove(
+				allTaskIdsToMove,
+				sourceTag,
+				targetTag,
+				rawData,
+				context,
+				tasksPath
+			);
+		} else {
+			// Block move and show error
+			throw new Error(
+				`Cannot move tasks: ${crossTagDependencies.length} cross-tag dependency conflicts found`
+			);
+		}
+	}
+
+	// Proceed with move
+	return performCrossTagMove(
+		taskIds,
+		sourceTag,
+		targetTag,
+		rawData,
+		context,
+		tasksPath
+	);
+}
+
+/**
+ * Perform the actual cross-tag move operation
+ * @param {Array} taskIds - Array of task IDs to move
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @param {Object} rawData - Raw data object
+ * @param {Object} context - Context object
+ * @param {string} tasksPath - Path to tasks.json file
+ * @returns {Object} Result object with moved task details
+ */
+function performCrossTagMove(
+	taskIds,
+	sourceTag,
+	targetTag,
+	rawData,
+	context,
+	tasksPath
+) {
+	const { projectRoot } = context;
+	const movedTasks = [];
+
+	// Move each task from source to target tag
+	taskIds.forEach((taskId) => {
+		const sourceTaskIndex = rawData[sourceTag].tasks.findIndex(
+			(t) => t.id === taskId
+		);
+
+		if (sourceTaskIndex === -1) {
+			throw new Error(`Task ${taskId} not found in source tag "${sourceTag}"`);
+		}
+
+		const taskToMove = rawData[sourceTag].tasks[sourceTaskIndex];
+
+		// Check for ID conflicts in target tag
+		const existingTaskIndex = rawData[targetTag].tasks.findIndex(
+			(t) => t.id === taskId
+		);
+		if (existingTaskIndex !== -1) {
+			throw new Error(
+				`Task ${taskId} already exists in target tag "${targetTag}"`
+			);
+		}
+
+		// Remove from source tag
+		rawData[sourceTag].tasks.splice(sourceTaskIndex, 1);
+
+		// Add to target tag
+		rawData[targetTag].tasks.push(taskToMove);
+
+		movedTasks.push({
+			id: taskId,
+			fromTag: sourceTag,
+			toTag: targetTag
+		});
+
+		log('info', `Moved task ${taskId} from "${sourceTag}" to "${targetTag}"`);
+	});
+
+	// Write the updated data
+	writeJSON(tasksPath, rawData, projectRoot, sourceTag);
+
+	return {
+		message: `Successfully moved ${movedTasks.length} tasks from "${sourceTag}" to "${targetTag}"`,
+		movedTasks
+	};
+}
+
+/**
+ * Validate target tag exists or can be created
+ * @param {string} targetTag - Target tag name
+ * @param {Object} rawData - Raw data object
+ * @returns {boolean} True if target tag is valid
+ */
+function validateTargetTag(targetTag, rawData) {
+	// Target tag can be created if it doesn't exist
+	return true;
+}
+
+/**
+ * Resolve ID conflicts in target tag
+ * @param {Array} taskIds - Array of task IDs to check
+ * @param {string} targetTag - Target tag name
+ * @param {Object} rawData - Raw data object
+ * @returns {Array} Array of conflicting task IDs
+ */
+function resolveIdConflicts(taskIds, targetTag, rawData) {
+	const conflicts = [];
+
+	if (!rawData[targetTag] || !Array.isArray(rawData[targetTag].tasks)) {
+		return conflicts;
+	}
+
+	taskIds.forEach((taskId) => {
+		const existingTask = rawData[targetTag].tasks.find((t) => t.id === taskId);
+		if (existingTask) {
+			conflicts.push(taskId);
+		}
+	});
+
+	return conflicts;
+}
+
+/**
+ * Preserve task metadata during cross-tag moves
+ * @param {Object} task - Task object
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @returns {Object} Task object with preserved metadata
+ */
+function preserveTaskMetadata(task, sourceTag, targetTag) {
+	// Add move history to task metadata
+	if (!task.metadata) {
+		task.metadata = {};
+	}
+
+	if (!task.metadata.moveHistory) {
+		task.metadata.moveHistory = [];
+	}
+
+	task.metadata.moveHistory.push({
+		fromTag: sourceTag,
+		toTag: targetTag,
+		timestamp: new Date().toISOString()
+	});
+
+	return task;
+}
+
 export default moveTask;
+export {
+	moveTasksBetweenTags,
+	getAllTasksWithTags,
+	validateTargetTag,
+	resolveIdConflicts,
+	preserveTaskMetadata
+};

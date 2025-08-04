@@ -1235,6 +1235,158 @@ function validateAndFixDependencies(
 	return changesDetected;
 }
 
+/**
+ * Check if a task has cross-tag dependencies that would prevent moving
+ * @param {Object} task - The task to validate
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @param {Array} allTasks - Array of all tasks from all tags
+ * @returns {Object} Object with canMove boolean and conflicts array
+ */
+function validateCrossTagMove(task, sourceTag, targetTag, allTasks) {
+	const conflicts = [];
+
+	if (!task.dependencies || task.dependencies.length === 0) {
+		return { canMove: true, conflicts: [] };
+	}
+
+	// Check each dependency
+	task.dependencies.forEach((depId) => {
+		const depTask = allTasks.find((t) => t.id === depId);
+
+		if (depTask && depTask.tag !== targetTag) {
+			conflicts.push({
+				taskId: task.id,
+				dependencyId: depId,
+				dependencyTag: depTask.tag,
+				message: `Task ${task.id} depends on ${depId} (in ${depTask.tag})`
+			});
+		}
+	});
+
+	return {
+		canMove: conflicts.length === 0,
+		conflicts
+	};
+}
+
+/**
+ * Find all cross-tag dependencies for a set of tasks
+ * @param {Array} sourceTasks - Array of tasks to check
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @param {Array} allTasks - Array of all tasks from all tags
+ * @returns {Array} Array of cross-tag dependency conflicts
+ */
+function findCrossTagDependencies(sourceTasks, sourceTag, targetTag, allTasks) {
+	const conflicts = [];
+
+	sourceTasks.forEach((task) => {
+		if (!task.dependencies || task.dependencies.length === 0) {
+			return;
+		}
+
+		task.dependencies.forEach((depId) => {
+			const depTask = allTasks.find((t) => t.id === depId);
+
+			if (depTask && depTask.tag !== targetTag) {
+				conflicts.push({
+					taskId: task.id,
+					dependencyId: depId,
+					dependencyTag: depTask.tag,
+					message: `Task ${task.id} depends on ${depId} (in ${depTask.tag})`
+				});
+			}
+		});
+	});
+
+	return conflicts;
+}
+
+/**
+ * Get all dependent task IDs for a set of cross-tag dependencies
+ * @param {Array} sourceTasks - Array of source tasks
+ * @param {Array} crossTagDependencies - Array of cross-tag dependency conflicts
+ * @param {Array} allTasks - Array of all tasks from all tags
+ * @returns {Array} Array of dependent task IDs to move
+ */
+function getDependentTaskIds(sourceTasks, crossTagDependencies, allTasks) {
+	const dependentTaskIds = new Set();
+
+	crossTagDependencies.forEach((conflict) => {
+		dependentTaskIds.add(conflict.dependencyId);
+	});
+
+	// Also include any tasks that depend on the source tasks
+	sourceTasks.forEach((sourceTask) => {
+		allTasks.forEach((task) => {
+			if (task.dependencies && task.dependencies.includes(sourceTask.id)) {
+				dependentTaskIds.add(task.id);
+			}
+		});
+	});
+
+	return Array.from(dependentTaskIds);
+}
+
+/**
+ * Validate subtask movement - block direct cross-tag subtask moves
+ * @param {string} taskId - Task ID to validate
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @throws {Error} If subtask movement is attempted
+ */
+function validateSubtaskMove(taskId, sourceTag, targetTag) {
+	if (taskId.includes('.')) {
+		throw new Error(
+			`Cannot move subtask ${taskId} directly between tags. ` +
+				`First promote it to a full task using: ` +
+				`task-master remove-subtask --id=${taskId} --convert`
+		);
+	}
+}
+
+/**
+ * Check if a task can be moved with its dependencies
+ * @param {string} taskId - Task ID to check
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @param {Array} allTasks - Array of all tasks from all tags
+ * @returns {Object} Object with canMove boolean and dependentTaskIds array
+ */
+function canMoveWithDependencies(taskId, sourceTag, targetTag, allTasks) {
+	const sourceTask = allTasks.find(
+		(t) => t.id === taskId && t.tag === sourceTag
+	);
+
+	if (!sourceTask) {
+		return { canMove: false, dependentTaskIds: [], error: 'Task not found' };
+	}
+
+	const validation = validateCrossTagMove(
+		sourceTask,
+		sourceTag,
+		targetTag,
+		allTasks
+	);
+
+	if (validation.canMove) {
+		return { canMove: true, dependentTaskIds: [] };
+	}
+
+	const dependentTaskIds = getDependentTaskIds(
+		[sourceTask],
+		validation.conflicts,
+		allTasks
+	);
+
+	return {
+		canMove: true,
+		dependentTaskIds,
+		conflicts: validation.conflicts
+	};
+}
+
 export {
 	addDependency,
 	removeDependency,
@@ -1245,5 +1397,10 @@ export {
 	removeDuplicateDependencies,
 	cleanupSubtaskDependencies,
 	ensureAtLeastOneIndependentSubtask,
-	validateAndFixDependencies
+	validateAndFixDependencies,
+	validateCrossTagMove,
+	findCrossTagDependencies,
+	getDependentTaskIds,
+	validateSubtaskMove,
+	canMoveWithDependencies
 };
