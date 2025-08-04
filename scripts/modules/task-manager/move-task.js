@@ -1,9 +1,8 @@
 import path from 'path';
 import { log, readJSON, writeJSON, setTasksForTag } from '../utils.js';
-import { isTaskDependentOn } from '../task-manager.js';
+import isTaskDependentOn from './is-task-dependent.js';
 import generateTaskFiles from './generate-task-files.js';
 import {
-	validateCrossTagMove,
 	findCrossTagDependencies,
 	getDependentTaskIds,
 	validateSubtaskMove
@@ -582,7 +581,18 @@ async function moveTasksBetweenTags(
 			// Break cross-tag dependencies
 			sourceTasks.forEach((task) => {
 				task.dependencies = task.dependencies.filter((depId) => {
-					const depTask = allTasks.find((t) => t.id === depId);
+					// Handle both task IDs and subtask IDs (e.g., "1.2")
+					let depTask = null;
+					if (typeof depId === 'string' && depId.includes('.')) {
+						// It's a subtask ID - extract parent task ID and find the parent task
+						const [parentId, subtaskId] = depId
+							.split('.')
+							.map((id) => parseInt(id, 10));
+						depTask = allTasks.find((t) => t.id === parentId);
+					} else {
+						// It's a regular task ID
+						depTask = allTasks.find((t) => t.id === depId);
+					}
 					return !depTask || depTask.tag === targetTag;
 				});
 			});
@@ -677,8 +687,13 @@ function performCrossTagMove(
 		// Remove from source tag
 		rawData[sourceTag].tasks.splice(sourceTaskIndex, 1);
 
-		// Add to target tag
-		rawData[targetTag].tasks.push(taskToMove);
+		// Preserve task metadata and add to target tag
+		const taskWithPreservedMetadata = preserveTaskMetadata(
+			taskToMove,
+			sourceTag,
+			targetTag
+		);
+		rawData[targetTag].tasks.push(taskWithPreservedMetadata);
 
 		movedTasks.push({
 			id: taskId,
@@ -690,7 +705,7 @@ function performCrossTagMove(
 	});
 
 	// Write the updated data
-	writeJSON(tasksPath, rawData, projectRoot, sourceTag);
+	writeJSON(tasksPath, rawData, projectRoot, null);
 
 	return {
 		message: `Successfully moved ${movedTasks.length} tasks from "${sourceTag}" to "${targetTag}"`,
@@ -699,24 +714,13 @@ function performCrossTagMove(
 }
 
 /**
- * Validate target tag exists or can be created
- * @param {string} targetTag - Target tag name
- * @param {Object} rawData - Raw data object
- * @returns {boolean} True if target tag is valid
- */
-function validateTargetTag(targetTag, rawData) {
-	// Target tag can be created if it doesn't exist
-	return true;
-}
-
-/**
- * Resolve ID conflicts in target tag
+ * Detect ID conflicts in target tag
  * @param {Array} taskIds - Array of task IDs to check
  * @param {string} targetTag - Target tag name
  * @param {Object} rawData - Raw data object
  * @returns {Array} Array of conflicting task IDs
  */
-function resolveIdConflicts(taskIds, targetTag, rawData) {
+function detectIdConflicts(taskIds, targetTag, rawData) {
 	const conflicts = [];
 
 	if (!rawData[targetTag] || !Array.isArray(rawData[targetTag].tasks)) {
@@ -763,7 +767,6 @@ export default moveTask;
 export {
 	moveTasksBetweenTags,
 	getAllTasksWithTags,
-	validateTargetTag,
-	resolveIdConflicts,
+	detectIdConflicts,
 	preserveTaskMetadata
 };

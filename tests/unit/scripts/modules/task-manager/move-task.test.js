@@ -1,23 +1,12 @@
 import { jest } from '@jest/globals';
 
 // --- Mocks ---
+// Only mock the specific functions that move-task actually uses
 jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	readJSON: jest.fn(),
 	writeJSON: jest.fn(),
 	log: jest.fn(),
-	setTasksForTag: jest.fn(),
-	truncate: jest.fn((t) => t),
-	isSilentMode: jest.fn(() => false),
-	findProjectRoot: jest.fn(() => '/test/project/root'),
-	isEmpty: jest.fn(() => false),
-	getCurrentTag: jest.fn(() => 'master'),
-	enableSilentMode: jest.fn(),
-	disableSilentMode: jest.fn(),
-	resolveEnvVariable: jest.fn(() => 'test-value'),
-	findTaskById: jest.fn(() => ({ id: 1, title: 'Task' })),
-	taskExists: jest.fn(() => true),
-	findCycles: jest.fn(() => []),
-	validateTaskId: jest.fn(() => true)
+	setTasksForTag: jest.fn()
 }));
 
 jest.unstable_mockModule(
@@ -28,32 +17,20 @@ jest.unstable_mockModule(
 );
 
 jest.unstable_mockModule(
-	'../../../../../scripts/modules/task-manager.js',
+	'../../../../../scripts/modules/task-manager/is-task-dependent.js',
 	() => ({
-		isTaskDependentOn: jest.fn(() => false),
-		analyzeTaskComplexity: jest.fn(() => ({ complexity: 5 })),
-		findNextTask: jest.fn(() => ({ id: 1, title: 'Next Task' })),
-		listTasks: jest.fn(() => []),
-		showTask: jest.fn(() => ({ id: 1, title: 'Task' })),
-		addTask: jest.fn(() => ({ id: 1, title: 'New Task' })),
-		updateTask: jest.fn(() => ({ id: 1, title: 'Updated Task' })),
-		expandTask: jest.fn(() => ({ id: 1, subtasks: [] })),
-		setTaskStatus: jest.fn(() => ({ id: 1, status: 'done' })),
-		removeTask: jest.fn(() => ({ id: 1, removed: true })),
-		addSubtask: jest.fn(() => ({ id: 1, subtask: { id: 1.1 } })),
-		removeSubtask: jest.fn(() => ({ id: 1, subtaskRemoved: true })),
-		clearSubtasks: jest.fn(() => ({ id: 1, cleared: true })),
-		addDependency: jest.fn(() => ({ id: 1, dependency: 2 })),
-		removeDependency: jest.fn(() => ({ id: 1, dependencyRemoved: 2 })),
-		validateDependencies: jest.fn(() => ({ valid: true })),
-		fixDependencies: jest.fn(() => ({ fixed: true })),
-		parsePRD: jest.fn(() => ({ tasks: [] })),
-		generateTaskFiles: jest.fn(() => ({ generated: true })),
-		performResearch: jest.fn(() => ({ research: 'results' }))
+		default: jest.fn(() => false)
 	})
 );
 
-// fs not needed since move-task uses writeJSON
+jest.unstable_mockModule(
+	'../../../../../scripts/modules/dependency-manager.js',
+	() => ({
+		findCrossTagDependencies: jest.fn(() => []),
+		getDependentTaskIds: jest.fn(() => []),
+		validateSubtaskMove: jest.fn()
+	})
+);
 
 const { readJSON, writeJSON, log } = await import(
 	'../../../../../scripts/modules/utils.js'

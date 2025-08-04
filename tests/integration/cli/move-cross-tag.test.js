@@ -52,13 +52,9 @@ const mockChalk = {
 		bold: jest.fn((text) => text)
 	}
 };
-mockChalk.default = jest.fn((text) => text);
-Object.keys(mockChalk).forEach((key) => {
-	if (key !== 'default') mockChalk.default[key] = mockChalk[key];
-});
 
 jest.unstable_mockModule('chalk', () => ({
-	default: mockChalk.default
+	default: mockChalk
 }));
 
 // --- Import modules (AFTER mock setup) ---
@@ -81,6 +77,40 @@ describe('Cross-Tag Move CLI Integration', () => {
 		jest.clearAllMocks();
 	});
 
+	// Helper function to capture console output and process.exit calls
+	function captureConsoleAndExit() {
+		const originalConsoleError = console.error;
+		const originalConsoleLog = console.log;
+		const originalProcessExit = process.exit;
+
+		const errorMessages = [];
+		const logMessages = [];
+		const exitCodes = [];
+
+		console.error = jest.fn((...args) => {
+			errorMessages.push(args.join(' '));
+		});
+
+		console.log = jest.fn((...args) => {
+			logMessages.push(args.join(' '));
+		});
+
+		process.exit = jest.fn((code) => {
+			exitCodes.push(code);
+		});
+
+		return {
+			errorMessages,
+			logMessages,
+			exitCodes,
+			restore: () => {
+				console.error = originalConsoleError;
+				console.log = originalConsoleLog;
+				process.exit = originalProcessExit;
+			}
+		};
+	}
+
 	// --- Replicate the move command action handler logic from commands.js ---
 	async function moveAction(options) {
 		const sourceId = options.from;
@@ -91,19 +121,35 @@ describe('Cross-Tag Move CLI Integration', () => {
 		const ignoreDependencies = options.ignoreDependencies;
 		const force = options.force;
 
+		// Get the source tag - fallback to current tag if not provided
+		const sourceTag = fromTag || utilsModule.getCurrentTag();
+
 		// Check if this is a cross-tag move (different tags)
-		const isCrossTagMove = fromTag && toTag && fromTag !== toTag;
+		const isCrossTagMove = sourceTag && toTag && sourceTag !== toTag;
 
 		if (isCrossTagMove) {
 			// Cross-tag move logic
 			if (!sourceId) {
-				console.error(
-					chalk.red('Error: --from parameter is required for cross-tag moves')
+				const error = new Error(
+					'--from parameter is required for cross-tag moves'
 				);
-				process.exit(1);
+				console.error(chalk.red(`Error: ${error.message}`));
+				throw error;
 			}
 
 			const taskIds = sourceId.split(',').map((id) => parseInt(id.trim(), 10));
+
+			// Validate parsed task IDs
+			for (let i = 0; i < taskIds.length; i++) {
+				if (isNaN(taskIds[i])) {
+					const error = new Error(
+						`Invalid task ID at position ${i + 1}: "${sourceId.split(',')[i].trim()}" is not a valid number`
+					);
+					console.error(chalk.red(`Error: ${error.message}`));
+					throw error;
+				}
+			}
+
 			const tasksPath = path.join(
 				utilsModule.findProjectRoot(),
 				'.taskmaster',
@@ -115,7 +161,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 				await moveTaskModule.moveTasksBetweenTags(
 					tasksPath,
 					taskIds,
-					fromTag,
+					sourceTag,
 					toTag,
 					{
 						withDependencies,
@@ -130,7 +176,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 				await generateTaskFilesModule.default(
 					tasksPath,
 					path.dirname(tasksPath),
-					{ tag: fromTag }
+					{ tag: sourceTag }
 				);
 				await generateTaskFilesModule.default(
 					tasksPath,
@@ -139,14 +185,15 @@ describe('Cross-Tag Move CLI Integration', () => {
 				);
 			} catch (error) {
 				console.error(chalk.red(`Error: ${error.message}`));
-				process.exit(1);
+				throw error;
 			}
 		} else {
 			// Handle case where both tags are provided but are the same
-			if (fromTag && toTag && fromTag === toTag) {
-				console.error(
-					chalk.red(`Error: Source and target tags are the same ("${fromTag}")`)
+			if (sourceTag && toTag && sourceTag === toTag) {
+				const error = new Error(
+					`Source and target tags are the same ("${sourceTag}")`
 				);
+				console.error(chalk.red(`Error: ${error.message}`));
 				console.log(
 					chalk.yellow(
 						'For within-tag moves, use: task-master move --from=<sourceId> --to=<destinationId>'
@@ -157,17 +204,16 @@ describe('Cross-Tag Move CLI Integration', () => {
 						'For cross-tag moves, use different tags: task-master move --from=<sourceId> --from-tag=<sourceTag> --to-tag=<targetTag>'
 					)
 				);
-				process.exit(1);
+				throw error;
 			}
 
 			// Within-tag move logic (existing functionality)
 			if (!sourceId || !destinationId) {
-				console.error(
-					chalk.red(
-						'Error: Both --from and --to parameters are required for within-tag moves'
-					)
+				const error = new Error(
+					'Both --from and --to parameters are required for within-tag moves'
 				);
-				process.exit(1);
+				console.error(chalk.red(`Error: ${error.message}`));
+				throw error;
 			}
 
 			// Call the existing moveTask function for within-tag moves
@@ -176,7 +222,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 				console.log(chalk.green('Successfully moved task'));
 			} catch (error) {
 				console.error(chalk.red(`Error: ${error.message}`));
-				process.exit(1);
+				throw error;
 			}
 		}
 	}
@@ -186,11 +232,11 @@ describe('Cross-Tag Move CLI Integration', () => {
 		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
 		mockGenerateTaskFiles.mockResolvedValue(undefined);
 
-		const options = {
-			from: '2',
-			fromTag: 'backlog',
-			toTag: 'in-progress'
-		};
+		try {
+			await moveAction(options);
+		} catch (error) {
+			// Expected to throw due to process.exit mock - no action needed
+		}
 
 		await moveAction(options);
 
@@ -219,24 +265,11 @@ describe('Cross-Tag Move CLI Integration', () => {
 			toTag: 'in-progress'
 		};
 
-		// Mock console.error and process.exit to capture the error
-		const originalConsoleError = console.error;
-		const originalProcessExit = process.exit;
-		const errorMessages = [];
-		const exitCodes = [];
+		const { errorMessages, restore } = captureConsoleAndExit();
 
-		console.error = jest.fn((...args) => {
-			errorMessages.push(args.join(' '));
-		});
-		process.exit = jest.fn((code) => {
-			exitCodes.push(code);
-		});
-
-		try {
-			await moveAction(options);
-		} catch (error) {
-			// Expected to throw due to process.exit
-		}
+		await expect(moveAction(options)).rejects.toThrow(
+			'Cannot move task due to cross-tag dependency conflicts'
+		);
 
 		expect(mockMoveTasksBetweenTags).toHaveBeenCalled();
 		expect(
@@ -244,11 +277,8 @@ describe('Cross-Tag Move CLI Integration', () => {
 				msg.includes('cross-tag dependency conflicts')
 			)
 		).toBe(true);
-		expect(exitCodes).toContain(1);
 
-		// Restore original functions
-		console.error = originalConsoleError;
-		process.exit = originalProcessExit;
+		restore();
 	});
 
 	it('should move task with dependencies when --with-dependencies is used', async () => {
@@ -345,34 +375,18 @@ describe('Cross-Tag Move CLI Integration', () => {
 			toTag: 'in-progress'
 		};
 
-		// Mock console.error and process.exit to capture the error
-		const originalConsoleError = console.error;
-		const originalProcessExit = process.exit;
-		const errorMessages = [];
-		const exitCodes = [];
+		const { errorMessages, restore } = captureConsoleAndExit();
 
-		console.error = jest.fn((...args) => {
-			errorMessages.push(args.join(' '));
-		});
-		process.exit = jest.fn((code) => {
-			exitCodes.push(code);
-		});
-
-		try {
-			await moveAction(options);
-		} catch (error) {
-			// Expected to throw due to process.exit
-		}
+		await expect(moveAction(options)).rejects.toThrow(
+			'Cannot move subtasks directly between tags. Please promote the subtask to a full task first.'
+		);
 
 		expect(mockMoveTasksBetweenTags).toHaveBeenCalled();
 		expect(errorMessages.some((msg) => msg.includes('subtasks directly'))).toBe(
 			true
 		);
-		expect(exitCodes).toContain(1);
 
-		// Restore original functions
-		console.error = originalConsoleError;
-		process.exit = originalProcessExit;
+		restore();
 	});
 
 	it('should provide helpful error messages for dependency conflicts', async () => {
@@ -389,24 +403,11 @@ describe('Cross-Tag Move CLI Integration', () => {
 			toTag: 'in-progress'
 		};
 
-		// Mock console.error and process.exit to capture the error
-		const originalConsoleError = console.error;
-		const originalProcessExit = process.exit;
-		const errorMessages = [];
-		const exitCodes = [];
+		const { errorMessages, restore } = captureConsoleAndExit();
 
-		console.error = jest.fn((...args) => {
-			errorMessages.push(args.join(' '));
-		});
-		process.exit = jest.fn((code) => {
-			exitCodes.push(code);
-		});
-
-		try {
-			await moveAction(options);
-		} catch (error) {
-			// Expected to throw due to process.exit
-		}
+		await expect(moveAction(options)).rejects.toThrow(
+			'Cross-tag dependency conflicts detected. Task 1 depends on Task 2 which is in a different tag.'
+		);
 
 		expect(mockMoveTasksBetweenTags).toHaveBeenCalled();
 		expect(
@@ -414,11 +415,8 @@ describe('Cross-Tag Move CLI Integration', () => {
 				msg.includes('Cross-tag dependency conflicts detected')
 			)
 		).toBe(true);
-		expect(exitCodes).toContain(1);
 
-		// Restore original functions
-		console.error = originalConsoleError;
-		process.exit = originalProcessExit;
+		restore();
 	});
 
 	it('should handle same tag error correctly', async () => {
@@ -428,29 +426,11 @@ describe('Cross-Tag Move CLI Integration', () => {
 			toTag: 'backlog' // Same tag
 		};
 
-		// Mock console.error and process.exit to capture the error
-		const originalConsoleError = console.error;
-		const originalConsoleLog = console.log;
-		const originalProcessExit = process.exit;
-		const errorMessages = [];
-		const logMessages = [];
-		const exitCodes = [];
+		const { errorMessages, logMessages, restore } = captureConsoleAndExit();
 
-		console.error = jest.fn((...args) => {
-			errorMessages.push(args.join(' '));
-		});
-		console.log = jest.fn((...args) => {
-			logMessages.push(args.join(' '));
-		});
-		process.exit = jest.fn((code) => {
-			exitCodes.push(code);
-		});
-
-		try {
-			await moveAction(options);
-		} catch (error) {
-			// Expected to throw due to process.exit
-		}
+		await expect(moveAction(options)).rejects.toThrow(
+			'Source and target tags are the same ("backlog")'
+		);
 
 		expect(
 			errorMessages.some((msg) =>
@@ -463,12 +443,8 @@ describe('Cross-Tag Move CLI Integration', () => {
 		expect(logMessages.some((msg) => msg.includes('For cross-tag moves'))).toBe(
 			true
 		);
-		expect(exitCodes).toContain(1);
 
-		// Restore original functions
-		console.error = originalConsoleError;
-		console.log = originalConsoleLog;
-		process.exit = originalProcessExit;
+		restore();
 	});
 
 	it('should use current tag when --from-tag is not provided', async () => {
@@ -482,87 +458,372 @@ describe('Cross-Tag Move CLI Integration', () => {
 
 		// Simulate command: task-master move --from=1 --to-tag=in-progress
 		// (no --from-tag provided, should use current tag 'master')
-		const moveAction = async () => {
-			const sourceId = '1';
-			const fromTag = undefined; // Not provided
-			const toTag = 'in-progress';
-
-			// Get the source tag - fallback to current tag if not provided
-			const sourceTag = fromTag || utilsModule.getCurrentTag();
-
-			// Check if this is a cross-tag move (different tags)
-			const isCrossTagMove = sourceTag && toTag && sourceTag !== toTag;
-
-			if (isCrossTagMove) {
-				// Cross-tag move logic
-				if (!sourceId) {
-					console.error(
-						chalk.red('Error: --from parameter is required for cross-tag moves')
-					);
-					process.exit(1);
-				}
-
-				const sourceIds = sourceId.split(',').map((id) => id.trim());
-				const moveOptions = {
-					withDependencies: false,
-					ignoreDependencies: false,
-					force: false
-				};
-
-				console.log(
-					chalk.blue(
-						`Moving tasks ${sourceIds.join(', ')} from "${sourceTag}" to "${toTag}"...`
-					)
-				);
-
-				try {
-					const result = await moveTaskModule.moveTasksBetweenTags(
-						'/test/path',
-						sourceIds,
-						sourceTag,
-						toTag,
-						moveOptions,
-						{ projectRoot: '/test/project' }
-					);
-
-					console.log(chalk.green(`✓ ${result.message}`));
-
-					// Generate task files for the affected tags
-					await generateTaskFilesModule.default('/test/path', '/test', {
-						tag: sourceTag
-					});
-					await generateTaskFilesModule.default('/test/path', '/test', {
-						tag: toTag
-					});
-				} catch (error) {
-					console.error(chalk.red(`Error: ${error.message}`));
-					process.exit(1);
-				}
-			}
-		};
-
-		await moveAction();
+		await moveAction({
+			from: '1',
+			toTag: 'in-progress',
+			withDependencies: false,
+			ignoreDependencies: false,
+			force: false
+			// fromTag is intentionally not provided to test fallback
+		});
 
 		// Verify that moveTasksBetweenTags was called with 'master' as source tag
 		expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
-			'/test/path',
-			['1'],
+			expect.stringContaining('.taskmaster/tasks/tasks.json'),
+			[1], // parseInt converts string to number
 			'master', // Should use current tag as fallback
 			'in-progress',
-			expect.any(Object),
-			expect.any(Object)
+			{
+				withDependencies: false,
+				ignoreDependencies: false,
+				force: false
+			}
 		);
 
 		// Verify that generateTaskFiles was called for both tags
 		expect(generateTaskFilesModule.default).toHaveBeenCalledWith(
-			'/test/path',
-			'/test',
+			expect.stringContaining('.taskmaster/tasks/tasks.json'),
+			expect.stringContaining('.taskmaster/tasks'),
 			{ tag: 'master' }
 		);
 		expect(generateTaskFilesModule.default).toHaveBeenCalledWith(
-			'/test/path',
-			'/test',
+			expect.stringContaining('.taskmaster/tasks/tasks.json'),
+			expect.stringContaining('.taskmaster/tasks'),
 			{ tag: 'in-progress' }
 		);
+	});
+
+	it('should move multiple tasks with comma-separated IDs successfully', async () => {
+		// Mock successful cross-tag move for multiple tasks
+		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
+		mockGenerateTaskFiles.mockResolvedValue(undefined);
+
+		const options = {
+			from: '1,2,3',
+			fromTag: 'backlog',
+			toTag: 'in-progress'
+		};
+
+		await moveAction(options);
+
+		expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
+			expect.stringContaining('tasks.json'),
+			[1, 2, 3], // Should parse comma-separated string to array of integers
+			'backlog',
+			'in-progress',
+			{
+				withDependencies: undefined,
+				ignoreDependencies: undefined,
+				force: undefined
+			}
+		);
+
+		// Verify task files are generated for both tags
+		expect(mockGenerateTaskFiles).toHaveBeenCalledTimes(2);
+		expect(mockGenerateTaskFiles).toHaveBeenCalledWith(
+			expect.stringContaining('tasks.json'),
+			expect.stringContaining('.taskmaster/tasks'),
+			{ tag: 'backlog' }
+		);
+		expect(mockGenerateTaskFiles).toHaveBeenCalledWith(
+			expect.stringContaining('tasks.json'),
+			expect.stringContaining('.taskmaster/tasks'),
+			{ tag: 'in-progress' }
+		);
+	});
+
+	it('should handle --force flag correctly', async () => {
+		// Mock successful cross-tag move with force flag
+		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
+		mockGenerateTaskFiles.mockResolvedValue(undefined);
+
+		const options = {
+			from: '1',
+			fromTag: 'backlog',
+			toTag: 'in-progress',
+			force: true
+		};
+
+		await moveAction(options);
+
+		expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
+			expect.stringContaining('tasks.json'),
+			[1],
+			'backlog',
+			'in-progress',
+			{
+				withDependencies: undefined,
+				ignoreDependencies: undefined,
+				force: true // Force flag should be passed through
+			}
+		);
+	});
+
+	it('should fail when invalid task ID is provided', async () => {
+		const options = {
+			from: '1,abc,3', // Invalid ID in middle
+			fromTag: 'backlog',
+			toTag: 'in-progress'
+		};
+
+		const { errorMessages, restore } = captureConsoleAndExit();
+
+		await expect(moveAction(options)).rejects.toThrow(
+			'Invalid task ID at position 2: "abc" is not a valid number'
+		);
+
+		expect(
+			errorMessages.some((msg) => msg.includes('Invalid task ID at position 2'))
+		).toBe(true);
+
+		restore();
+	});
+
+	it('should fail when first task ID is invalid', async () => {
+		const options = {
+			from: 'abc,2,3', // Invalid ID at start
+			fromTag: 'backlog',
+			toTag: 'in-progress'
+		};
+
+		const { errorMessages, restore } = captureConsoleAndExit();
+
+		await expect(moveAction(options)).rejects.toThrow(
+			'Invalid task ID at position 1: "abc" is not a valid number'
+		);
+
+		expect(
+			errorMessages.some((msg) => msg.includes('Invalid task ID at position 1'))
+		).toBe(true);
+
+		restore();
+	});
+
+	it('should fail when last task ID is invalid', async () => {
+		const options = {
+			from: '1,2,xyz', // Invalid ID at end
+			fromTag: 'backlog',
+			toTag: 'in-progress'
+		};
+
+		const { errorMessages, restore } = captureConsoleAndExit();
+
+		await expect(moveAction(options)).rejects.toThrow(
+			'Invalid task ID at position 3: "xyz" is not a valid number'
+		);
+
+		expect(
+			errorMessages.some((msg) => msg.includes('Invalid task ID at position 3'))
+		).toBe(true);
+
+		restore();
+	});
+
+	it('should fail when single invalid task ID is provided', async () => {
+		const options = {
+			from: 'invalid',
+			fromTag: 'backlog',
+			toTag: 'in-progress'
+		};
+
+		const { errorMessages, restore } = captureConsoleAndExit();
+
+		await expect(moveAction(options)).rejects.toThrow(
+			'Invalid task ID at position 1: "invalid" is not a valid number'
+		);
+
+		expect(
+			errorMessages.some((msg) => msg.includes('Invalid task ID at position 1'))
+		).toBe(true);
+
+		restore();
+	});
+
+	it('should combine --with-dependencies and --force flags correctly', async () => {
+		// Mock successful cross-tag move with both flags
+		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
+		mockGenerateTaskFiles.mockResolvedValue(undefined);
+
+		const options = {
+			from: '1,2',
+			fromTag: 'backlog',
+			toTag: 'in-progress',
+			withDependencies: true,
+			force: true
+		};
+
+		await moveAction(options);
+
+		expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
+			expect.stringContaining('tasks.json'),
+			[1, 2],
+			'backlog',
+			'in-progress',
+			{
+				withDependencies: true,
+				ignoreDependencies: undefined,
+				force: true // Both flags should be passed
+			}
+		);
+	});
+
+	it('should combine --ignore-dependencies and --force flags correctly', async () => {
+		// Mock successful cross-tag move with both flags
+		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
+		mockGenerateTaskFiles.mockResolvedValue(undefined);
+
+		const options = {
+			from: '1',
+			fromTag: 'backlog',
+			toTag: 'in-progress',
+			ignoreDependencies: true,
+			force: true
+		};
+
+		await moveAction(options);
+
+		expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
+			expect.stringContaining('tasks.json'),
+			[1],
+			'backlog',
+			'in-progress',
+			{
+				withDependencies: undefined,
+				ignoreDependencies: true,
+				force: true // Both flags should be passed
+			}
+		);
+	});
+
+	it('should handle all three flags combined correctly', async () => {
+		// Mock successful cross-tag move with all flags
+		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
+		mockGenerateTaskFiles.mockResolvedValue(undefined);
+
+		const options = {
+			from: '1,2,3',
+			fromTag: 'backlog',
+			toTag: 'in-progress',
+			withDependencies: true,
+			ignoreDependencies: true,
+			force: true
+		};
+
+		await moveAction(options);
+
+		expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
+			expect.stringContaining('tasks.json'),
+			[1, 2, 3],
+			'backlog',
+			'in-progress',
+			{
+				withDependencies: true,
+				ignoreDependencies: true,
+				force: true // All three flags should be passed
+			}
+		);
+	});
+
+	it('should handle whitespace in comma-separated task IDs', async () => {
+		// Mock successful cross-tag move with whitespace
+		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
+		mockGenerateTaskFiles.mockResolvedValue(undefined);
+
+		const options = {
+			from: ' 1 , 2 , 3 ', // Whitespace around IDs and commas
+			fromTag: 'backlog',
+			toTag: 'in-progress'
+		};
+
+		await moveAction(options);
+
+		expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
+			expect.stringContaining('tasks.json'),
+			[1, 2, 3], // Should trim whitespace and parse as integers
+			'backlog',
+			'in-progress',
+			{
+				withDependencies: undefined,
+				ignoreDependencies: undefined,
+				force: undefined
+			}
+		);
+	});
+
+	it('should fail when --from parameter is missing for cross-tag move', async () => {
+		const options = {
+			fromTag: 'backlog',
+			toTag: 'in-progress'
+			// from is intentionally missing
+		};
+
+		const { errorMessages, restore } = captureConsoleAndExit();
+
+		await expect(moveAction(options)).rejects.toThrow(
+			'--from parameter is required for cross-tag moves'
+		);
+
+		expect(
+			errorMessages.some((msg) =>
+				msg.includes('--from parameter is required for cross-tag moves')
+			)
+		).toBe(true);
+
+		restore();
+	});
+
+	it('should fail when both --from and --to are missing for within-tag move', async () => {
+		const options = {
+			// Both from and to are missing for within-tag move
+		};
+
+		const { errorMessages, restore } = captureConsoleAndExit();
+
+		await expect(moveAction(options)).rejects.toThrow(
+			'Both --from and --to parameters are required for within-tag moves'
+		);
+
+		expect(
+			errorMessages.some((msg) =>
+				msg.includes(
+					'Both --from and --to parameters are required for within-tag moves'
+				)
+			)
+		).toBe(true);
+
+		restore();
+	});
+
+	it('should handle within-tag move when only --from is provided', async () => {
+		// Mock successful within-tag move
+		mockMoveTask.mockResolvedValue(undefined);
+
+		const options = {
+			from: '1',
+			to: '2'
+			// No tags specified, should use within-tag logic
+		};
+
+		await moveAction(options);
+
+		expect(mockMoveTask).toHaveBeenCalledWith('1', '2');
+		expect(mockMoveTasksBetweenTags).not.toHaveBeenCalled();
+	});
+
+	it('should handle within-tag move when both tags are the same', async () => {
+		// Mock successful within-tag move
+		mockMoveTask.mockResolvedValue(undefined);
+
+		const options = {
+			from: '1',
+			to: '2',
+			fromTag: 'master',
+			toTag: 'master' // Same tag, should use within-tag logic
+		};
+
+		await moveAction(options);
+
+		expect(mockMoveTask).toHaveBeenCalledWith('1', '2');
+		expect(mockMoveTasksBetweenTags).not.toHaveBeenCalled();
 	});
 });

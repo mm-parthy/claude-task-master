@@ -4076,6 +4076,11 @@ Examples:
 
 			if (isCrossTagMove) {
 				// Cross-tag move logic
+				// Import the cross-tag move function
+				const { moveTasksBetweenTags } = await import(
+					'./task-manager/move-task.js'
+				);
+
 				if (!sourceId) {
 					console.error(
 						chalk.red('Error: --from parameter is required for cross-tag moves')
@@ -4087,11 +4092,6 @@ Examples:
 					);
 					process.exit(1);
 				}
-
-				// Import the cross-tag move function
-				const { moveTasksBetweenTags } = await import(
-					'./task-manager/move-task.js'
-				);
 
 				const sourceIds = sourceId.split(',').map((id) => id.trim());
 				const moveOptions = {

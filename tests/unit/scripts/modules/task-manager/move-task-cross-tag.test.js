@@ -203,16 +203,52 @@ describe('Cross-Tag Task Movement', () => {
 			);
 
 			expect(result.message).toContain('Successfully moved 1 tasks');
-			expect(writeJSON).toHaveBeenCalled();
+			expect(writeJSON).toHaveBeenCalledWith(
+				mockTasksPath,
+				expect.objectContaining({
+					backlog: expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({
+								id: 1,
+								title: 'Task 1',
+								dependencies: [2]
+							}),
+							expect.objectContaining({
+								id: 3,
+								title: 'Task 3',
+								dependencies: [1]
+							})
+						])
+					}),
+					'in-progress': expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({
+								id: 4,
+								title: 'Task 4',
+								dependencies: []
+							}),
+							expect.objectContaining({
+								id: 2,
+								title: 'Task 2',
+								dependencies: []
+							})
+						])
+					})
+				}),
+				mockContext.projectRoot
+			);
 		});
 
 		it('should throw error for cross-tag dependencies by default', async () => {
-			findCrossTagDependencies.mockReturnValue([
-				{ taskId: 1, dependencyId: 2, dependencyTag: 'backlog' }
-			]);
+			const mockDependency = {
+				taskId: 1,
+				dependencyId: 2,
+				dependencyTag: 'backlog'
+			};
+			findCrossTagDependencies.mockReturnValue([mockDependency]);
 			validateSubtaskMove.mockImplementation(() => {});
 
-			await expect(
+			const error = await expect(
 				moveTasksBetweenTags(
 					mockTasksPath,
 					[1],
@@ -221,13 +257,22 @@ describe('Cross-Tag Task Movement', () => {
 					{},
 					mockContext
 				)
-			).rejects.toThrow('cross-tag dependency conflicts');
+			).rejects.toThrow();
+
+			expect(error.message).toContain('cross-tag dependency conflicts');
+			expect(error.message).toContain(
+				'Task 1 depends on Task 2 in backlog tag'
+			);
+			expect(writeJSON).not.toHaveBeenCalled();
 		});
 
 		it('should move with dependencies when --with-dependencies is used', async () => {
-			findCrossTagDependencies.mockReturnValue([
-				{ taskId: 1, dependencyId: 2, dependencyTag: 'backlog' }
-			]);
+			const mockDependency = {
+				taskId: 1,
+				dependencyId: 2,
+				dependencyTag: 'backlog'
+			};
+			findCrossTagDependencies.mockReturnValue([mockDependency]);
 			getDependentTaskIds.mockReturnValue([2]);
 			validateSubtaskMove.mockImplementation(() => {});
 
@@ -240,14 +285,51 @@ describe('Cross-Tag Task Movement', () => {
 				mockContext
 			);
 
-			expect(result.message).toContain('Successfully moved');
-			expect(writeJSON).toHaveBeenCalled();
+			expect(result.message).toContain('Successfully moved 2 tasks');
+			expect(result.message).toContain('including dependencies');
+			expect(writeJSON).toHaveBeenCalledWith(
+				mockTasksPath,
+				expect.objectContaining({
+					backlog: expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({
+								id: 3,
+								title: 'Task 3',
+								dependencies: [1]
+							})
+						])
+					}),
+					'in-progress': expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({
+								id: 4,
+								title: 'Task 4',
+								dependencies: []
+							}),
+							expect.objectContaining({
+								id: 1,
+								title: 'Task 1',
+								dependencies: [2]
+							}),
+							expect.objectContaining({
+								id: 2,
+								title: 'Task 2',
+								dependencies: []
+							})
+						])
+					})
+				}),
+				mockContext.projectRoot
+			);
 		});
 
 		it('should break dependencies when --ignore-dependencies is used', async () => {
-			findCrossTagDependencies.mockReturnValue([
-				{ taskId: 1, dependencyId: 2, dependencyTag: 'backlog' }
-			]);
+			const mockDependency = {
+				taskId: 1,
+				dependencyId: 2,
+				dependencyTag: 'backlog'
+			};
+			findCrossTagDependencies.mockReturnValue([mockDependency]);
 			validateSubtaskMove.mockImplementation(() => {});
 
 			const result = await moveTasksBetweenTags(
@@ -259,8 +341,42 @@ describe('Cross-Tag Task Movement', () => {
 				mockContext
 			);
 
-			expect(result.message).toContain('Successfully moved');
-			expect(writeJSON).toHaveBeenCalled();
+			expect(result.message).toContain('Successfully moved 1 tasks');
+			expect(result.message).toContain('dependencies broken');
+			expect(writeJSON).toHaveBeenCalledWith(
+				mockTasksPath,
+				expect.objectContaining({
+					backlog: expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({
+								id: 1,
+								title: 'Task 1',
+								dependencies: []
+							}), // dependency removed
+							expect.objectContaining({
+								id: 3,
+								title: 'Task 3',
+								dependencies: [1]
+							})
+						])
+					}),
+					'in-progress': expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({
+								id: 4,
+								title: 'Task 4',
+								dependencies: []
+							}),
+							expect.objectContaining({
+								id: 2,
+								title: 'Task 2',
+								dependencies: []
+							})
+						])
+					})
+				}),
+				mockContext.projectRoot
+			);
 		});
 
 		it('should create target tag if it does not exist', async () => {
@@ -276,16 +392,55 @@ describe('Cross-Tag Task Movement', () => {
 				mockContext
 			);
 
-			expect(result.message).toContain('Successfully moved');
-			expect(writeJSON).toHaveBeenCalled();
+			expect(result.message).toContain('Successfully moved 1 tasks');
+			expect(result.message).toContain('new-tag');
+			expect(writeJSON).toHaveBeenCalledWith(
+				mockTasksPath,
+				expect.objectContaining({
+					backlog: expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({
+								id: 1,
+								title: 'Task 1',
+								dependencies: [2]
+							}),
+							expect.objectContaining({
+								id: 3,
+								title: 'Task 3',
+								dependencies: [1]
+							})
+						])
+					}),
+					'new-tag': expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({
+								id: 2,
+								title: 'Task 2',
+								dependencies: []
+							})
+						])
+					}),
+					'in-progress': expect.objectContaining({
+						tasks: expect.arrayContaining([
+							expect.objectContaining({
+								id: 4,
+								title: 'Task 4',
+								dependencies: []
+							})
+						])
+					})
+				}),
+				mockContext.projectRoot
+			);
 		});
 
 		it('should throw error for subtask movement', async () => {
+			const subtaskError = 'Cannot move subtask 1.2 directly between tags';
 			validateSubtaskMove.mockImplementation(() => {
-				throw new Error('Cannot move subtask 1.2 directly between tags');
+				throw new Error(subtaskError);
 			});
 
-			await expect(
+			const error = await expect(
 				moveTasksBetweenTags(
 					mockTasksPath,
 					['1.2'],
@@ -294,7 +449,48 @@ describe('Cross-Tag Task Movement', () => {
 					{},
 					mockContext
 				)
-			).rejects.toThrow('Cannot move subtask');
+			).rejects.toThrow();
+
+			expect(error.message).toBe(subtaskError);
+			expect(writeJSON).not.toHaveBeenCalled();
+		});
+
+		it('should throw error for invalid task IDs', async () => {
+			findCrossTagDependencies.mockReturnValue([]);
+			validateSubtaskMove.mockImplementation(() => {});
+
+			const error = await expect(
+				moveTasksBetweenTags(
+					mockTasksPath,
+					[999], // Non-existent task
+					'backlog',
+					'in-progress',
+					{},
+					mockContext
+				)
+			).rejects.toThrow();
+
+			expect(error.message).toContain('Task 999 not found in backlog tag');
+			expect(writeJSON).not.toHaveBeenCalled();
+		});
+
+		it('should throw error for invalid source tag', async () => {
+			findCrossTagDependencies.mockReturnValue([]);
+			validateSubtaskMove.mockImplementation(() => {});
+
+			const error = await expect(
+				moveTasksBetweenTags(
+					mockTasksPath,
+					[1],
+					'non-existent-tag',
+					'in-progress',
+					{},
+					mockContext
+				)
+			).rejects.toThrow();
+
+			expect(error.message).toContain('Source tag non-existent-tag not found');
+			expect(writeJSON).not.toHaveBeenCalled();
 		});
 	});
 });
