@@ -5,7 +5,8 @@ import { jest } from '@jest/globals';
 jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	readJSON: jest.fn(),
 	writeJSON: jest.fn(),
-	log: jest.fn()
+	log: jest.fn(),
+	setTasksForTag: jest.fn()
 }));
 
 jest.unstable_mockModule(

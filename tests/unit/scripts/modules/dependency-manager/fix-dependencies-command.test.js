@@ -25,12 +25,20 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	getTasksForTag: jest.fn(() => []),
 	setTasksForTag: jest.fn(),
 	enableSilentMode: jest.fn(),
-	disableSilentMode: jest.fn()
+	disableSilentMode: jest.fn(),
+	isEmpty: jest.fn((value) => {
+		if (Array.isArray(value)) return value.length === 0;
+		if (typeof value === 'object' && value !== null)
+			return Object.keys(value).length === 0;
+		return false;
+	}),
+	resolveEnvVariable: jest.fn()
 }));
 
 // Mock ui.js
 jest.unstable_mockModule('../../../../../scripts/modules/ui.js', () => ({
-	displayBanner: jest.fn()
+	displayBanner: jest.fn(),
+	formatDependenciesWithStatus: jest.fn()
 }));
 
 // Mock task-manager.js
