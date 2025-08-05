@@ -16,6 +16,7 @@ global.console.log = mockConsoleLog;
 afterAll(() => {
 	global.console.log = originalConsoleLog;
 });
+
 describe('Cross-Tag Error Display Functions', () => {
 	beforeEach(() => {
 		mockConsoleLog.mockClear();

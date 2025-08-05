@@ -90,7 +90,7 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 		}
 		return path.join(projectRoot || '.', basePath);
 	}),
-	traverseDependencies: jest.fn(() => []),
+	traverseDependencies: jest.fn((tasks, taskId, visited) => []),
 	CONFIG: {
 		defaultSubtasks: 3
 	}

@@ -4160,13 +4160,6 @@ Examples:
 							toTag,
 							'Source and target tags are identical'
 						);
-					} else if (
-						error.name === 'DependencyError' &&
-						error.code === 'CANNOT_MOVE_SUBTASK'
-					) {
-						// Handle DependencyError for subtask moves
-						const taskId = error.data.taskId || sourceIds[0];
-						displaySubtaskMoveError(taskId, sourceTag, toTag);
 					} else {
 						// General error - show dependency validation hints
 						displayDependencyValidationHints('after-error');

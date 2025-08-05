@@ -42,7 +42,7 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	performCompleteTagMigration: jest.fn(),
 	setTasksForTag: jest.fn(),
 	getTasksForTag: jest.fn((data, tag) => data[tag]?.tasks || []),
-	traverseDependencies: jest.fn(() => [])
+	traverseDependencies: jest.fn((tasks, taskId, visited) => [])
 }));
 
 jest.unstable_mockModule(

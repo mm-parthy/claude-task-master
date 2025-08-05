@@ -34,7 +34,7 @@ export function registerMoveTaskTool(server) {
 				.string()
 				.optional()
 				.describe(
-					'ID of the destination (e.g., "7" or "7.3"). Required for within-tag moves, optional for cross-tag moves'
+					'ID of the destination (e.g., "7" or "7.3"). Required for within-tag moves. Not used for cross-tag moves - tasks retain their original IDs in the target tag'
 				),
 			file: z.string().optional().describe('Custom path to tasks.json file'),
 			projectRoot: z
@@ -66,6 +66,13 @@ export function registerMoveTaskTool(server) {
 						return createErrorResponse(
 							'Source IDs are required for cross-tag moves',
 							'MISSING_SOURCE_IDS'
+						);
+					}
+
+					// Warn if 'to' parameter is provided for cross-tag moves
+					if (args.to) {
+						log.warn(
+							'The "to" parameter is not used for cross-tag moves and will be ignored. Tasks retain their original IDs in the target tag.'
 						);
 					}
 
@@ -130,6 +137,7 @@ export function registerMoveTaskTool(server) {
 					// If moving multiple tasks
 					if (fromIds.length > 1) {
 						const results = [];
+						const skippedMoves = [];
 						// Move tasks one by one, only generate files on the last move
 						for (let i = 0; i < fromIds.length; i++) {
 							const fromId = fromIds[i];
@@ -138,6 +146,11 @@ export function registerMoveTaskTool(server) {
 							// Skip if source and destination are the same
 							if (fromId === toId) {
 								log.info(`Skipping ${fromId} -> ${toId} (same ID)`);
+								skippedMoves.push({
+									sourceId: fromId,
+									destinationId: toId,
+									reason: 'Source and destination IDs are identical'
+								});
 								continue;
 							}
 
@@ -169,7 +182,8 @@ export function registerMoveTaskTool(server) {
 								success: true,
 								data: {
 									moves: results,
-									message: `Successfully moved ${results.length} tasks`
+									skippedMoves: skippedMoves,
+									message: `Successfully moved ${results.length} tasks${skippedMoves.length > 0 ? `, skipped ${skippedMoves.length} moves` : ''}`
 								}
 							},
 							log,

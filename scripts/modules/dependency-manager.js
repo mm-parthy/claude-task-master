@@ -1261,6 +1261,10 @@ function validateAndFixDependencies(
 /**
  * Recursively find all dependencies for a set of tasks with depth limiting
  * Recursively find all dependencies for a set of tasks with depth limiting
+ *
+ * @note This function depends on the traverseDependencies utility from utils.js
+ * for the actual dependency traversal logic.
+ *
  * @param {Array} sourceTasks - Array of source tasks to find dependencies for
  * @param {Array} allTasks - Array of all available tasks
  * @param {Object} options - Options object
@@ -1315,17 +1319,24 @@ function findDependencyTask(depId, taskId, allTasks) {
 		// For subtasks, this might be a relative reference within the same parent
 		if (taskId && typeof taskId === 'string' && taskId.includes('.')) {
 			const [parentId] = taskId.split('.');
-			depTask = allTasks.find((t) => {
-				// Check if this is a subtask of the same parent
-				// Task IDs are numeric, only subtask references use dot notation
-				return (
-					t &&
-					t.id &&
-					t.id.includes('.') &&
-					t.id.startsWith(parentId + '.') &&
-					parseInt(t.id.split('.')[1], 10) === numericId
+			const parentTask = allTasks.find((t) => String(t.id) === parentId);
+			if (
+				parentTask &&
+				parentTask.subtasks &&
+				Array.isArray(parentTask.subtasks)
+			) {
+				// Search for the subtask within the parent's subtasks array
+				const foundSubtask = parentTask.subtasks.find(
+					(subtask) => subtask.id === numericId
 				);
-			});
+				if (foundSubtask) {
+					// Return a task-like object that represents the subtask with full ID
+					depTask = {
+						...foundSubtask,
+						id: `${parentId}.${foundSubtask.id}`
+					};
+				}
+			}
 		}
 	}
 
@@ -1438,6 +1449,121 @@ function findCrossTagDependencies(sourceTasks, sourceTag, targetTag, allTasks) {
 }
 
 /**
+ * Helper function to find all tasks that depend on a given task (reverse dependencies)
+ * @param {string|number} taskId - The task ID to find dependencies for
+ * @param {Array} allTasks - Array of all tasks to search
+ * @param {Set} dependentTaskIds - Set to add found dependencies to
+ */
+function findTasksThatDependOn(taskId, allTasks, dependentTaskIds) {
+	// Find the task object for the given ID
+	const sourceTask = allTasks.find((t) => t.id === taskId);
+	if (!sourceTask) {
+		return;
+	}
+
+	// Use the shared utility for reverse dependency traversal
+	const reverseDeps = traverseDependencies([sourceTask], allTasks, {
+		direction: 'reverse',
+		includeSelf: false,
+		logger: { warn: log.warn || console.warn }
+	});
+
+	// Add all found reverse dependencies to the dependentTaskIds set
+	reverseDeps.forEach((depId) => dependentTaskIds.add(depId));
+}
+
+/**
+ * Helper function to check if a task depends on a source task
+ * @param {Object} task - Task to check for dependencies
+ * @param {Object} sourceTask - Source task to check dependency against
+ * @returns {boolean} True if task depends on source task
+ */
+function taskDependsOnSource(task, sourceTask) {
+	if (!task || !Array.isArray(task.dependencies)) {
+		return false;
+	}
+
+	const sourceTaskIdStr = String(sourceTask.id);
+
+	return task.dependencies.some((depId) => {
+		if (!depId) return false;
+
+		const depIdStr = String(depId);
+
+		// Exact match
+		if (depIdStr === sourceTaskIdStr) {
+			return true;
+		}
+
+		// Handle subtask references
+		if (
+			sourceTaskIdStr &&
+			typeof sourceTaskIdStr === 'string' &&
+			sourceTaskIdStr.includes('.')
+		) {
+			// If source is a subtask, check if dependency references the parent
+			const [parentId] = sourceTaskIdStr.split('.');
+			if (depIdStr === parentId) {
+				return true;
+			}
+		}
+
+		// Handle relative subtask references
+		if (
+			depIdStr &&
+			typeof depIdStr === 'string' &&
+			depIdStr.includes('.') &&
+			sourceTaskIdStr &&
+			typeof sourceTaskIdStr === 'string' &&
+			sourceTaskIdStr.includes('.')
+		) {
+			const [depParentId] = depIdStr.split('.');
+			const [sourceParentId] = sourceTaskIdStr.split('.');
+			if (depParentId === sourceParentId) {
+				// Both are subtasks of the same parent, check if they reference each other
+				const depSubtaskNum = parseInt(depIdStr.split('.')[1], 10);
+				const sourceSubtaskNum = parseInt(sourceTaskIdStr.split('.')[1], 10);
+				if (depSubtaskNum === sourceSubtaskNum) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	});
+}
+
+/**
+ * Helper function to check if any subtasks of a task depend on source tasks
+ * @param {Object} task - Task to check subtasks of
+ * @param {Array} sourceTasks - Array of source tasks to check dependencies against
+ * @returns {boolean} True if any subtasks depend on source tasks
+ */
+function subtasksDependOnSource(task, sourceTasks) {
+	if (!task.subtasks || !Array.isArray(task.subtasks)) {
+		return false;
+	}
+
+	return task.subtasks.some((subtask) => {
+		// Check if this subtask depends on any source task
+		const subtaskDependsOnSource = sourceTasks.some((sourceTask) =>
+			taskDependsOnSource(subtask, sourceTask)
+		);
+
+		if (subtaskDependsOnSource) {
+			return true;
+		}
+
+		// Recursively check if any nested subtasks depend on source tasks
+		if (subtask.subtasks && Array.isArray(subtask.subtasks)) {
+			return subtasksDependOnSource(subtask, sourceTasks);
+		}
+
+		return false;
+	});
+}
+
+/**
  * Get all dependent task IDs for a set of cross-tag dependencies
  * @param {Array} sourceTasks - Array of source tasks
  * @param {Array} crossTagDependencies - Array of cross-tag dependency conflicts
@@ -1464,25 +1590,6 @@ function getDependentTaskIds(sourceTasks, crossTagDependencies, allTasks) {
 			includeSelf: false
 		})
 	);
-
-	// Helper function to find all tasks that depend on a given task (reverse dependencies)
-	function findTasksThatDependOn(taskId) {
-		// Find the task object for the given ID
-		const sourceTask = allTasks.find((t) => t.id === taskId);
-		if (!sourceTask) {
-			return;
-		}
-
-		// Use the shared utility for reverse dependency traversal
-		const reverseDeps = traverseDependencies([sourceTask], allTasks, {
-			direction: 'reverse',
-			includeSelf: false,
-			logger: { warn: log.warn || console.warn }
-		});
-
-		// Add all found reverse dependencies to the dependentTaskIds set
-		reverseDeps.forEach((depId) => dependentTaskIds.add(depId));
-	}
 
 	// Add immediate dependency IDs from conflicts and find their dependencies recursively
 	const conflictTasksToProcess = [];
@@ -1519,90 +1626,9 @@ function getDependentTaskIds(sourceTasks, crossTagDependencies, allTasks) {
 			// Find all tasks that this source task depends on (forward dependencies) - already handled above
 
 			// Find all tasks that depend on this source task (reverse dependencies)
-			findTasksThatDependOn(sourceTask.id);
+			findTasksThatDependOn(sourceTask.id, allTasks, dependentTaskIds);
 		}
 	});
-
-	// Helper function to check if a task depends on a source task
-	function taskDependsOnSource(task, sourceTask) {
-		if (!task || !Array.isArray(task.dependencies)) {
-			return false;
-		}
-
-		const sourceTaskIdStr = String(sourceTask.id);
-
-		return task.dependencies.some((depId) => {
-			if (!depId) return false;
-
-			const depIdStr = String(depId);
-
-			// Exact match
-			if (depIdStr === sourceTaskIdStr) {
-				return true;
-			}
-
-			// Handle subtask references
-			if (
-				sourceTaskIdStr &&
-				typeof sourceTaskIdStr === 'string' &&
-				sourceTaskIdStr.includes('.')
-			) {
-				// If source is a subtask, check if dependency references the parent
-				const [parentId] = sourceTaskIdStr.split('.');
-				if (depIdStr === parentId) {
-					return true;
-				}
-			}
-
-			// Handle relative subtask references
-			if (
-				depIdStr &&
-				typeof depIdStr === 'string' &&
-				depIdStr.includes('.') &&
-				sourceTaskIdStr &&
-				typeof sourceTaskIdStr === 'string' &&
-				sourceTaskIdStr.includes('.')
-			) {
-				const [depParentId] = depIdStr.split('.');
-				const [sourceParentId] = sourceTaskIdStr.split('.');
-				if (depParentId === sourceParentId) {
-					// Both are subtasks of the same parent, check if they reference each other
-					const depSubtaskNum = parseInt(depIdStr.split('.')[1], 10);
-					const sourceSubtaskNum = parseInt(sourceTaskIdStr.split('.')[1], 10);
-					if (depSubtaskNum === sourceSubtaskNum) {
-						return true;
-					}
-				}
-			}
-
-			return false;
-		});
-	}
-
-	// Helper function to check if any subtasks of a task depend on source tasks
-	function subtasksDependOnSource(task, sourceTasks) {
-		if (!task.subtasks || !Array.isArray(task.subtasks)) {
-			return false;
-		}
-
-		return task.subtasks.some((subtask) => {
-			// Check if this subtask depends on any source task
-			const subtaskDependsOnSource = sourceTasks.some((sourceTask) =>
-				taskDependsOnSource(subtask, sourceTask)
-			);
-
-			if (subtaskDependsOnSource) {
-				return true;
-			}
-
-			// Recursively check if any nested subtasks depend on source tasks
-			if (subtask.subtasks && Array.isArray(subtask.subtasks)) {
-				return subtasksDependOnSource(subtask, sourceTasks);
-			}
-
-			return false;
-		});
-	}
 
 	// Also include any tasks that depend on the source tasks
 	sourceTasks.forEach((sourceTask) => {
