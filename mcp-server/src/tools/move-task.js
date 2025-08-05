@@ -153,7 +153,8 @@ export function registerMoveTaskTool(server) {
 									destinationId: toId,
 									tasksJsonPath,
 									projectRoot: args.projectRoot,
-									tag: resolvedTag
+									tag: resolvedTag,
+									generateFiles: shouldGenerateFiles
 								},
 								log,
 								{ session }
@@ -190,7 +191,8 @@ export function registerMoveTaskTool(server) {
 									destinationId: args.to,
 									tasksJsonPath,
 									projectRoot: args.projectRoot,
-									tag: resolvedTag
+									tag: resolvedTag,
+									generateFiles: true
 								},
 								log,
 								{ session }

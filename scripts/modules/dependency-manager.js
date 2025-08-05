@@ -22,6 +22,28 @@ import { displayBanner } from './ui.js';
 import generateTaskFiles from './task-manager/generate-task-files.js';
 
 /**
+ * Structured error class for dependency operations
+ */
+class DependencyError extends Error {
+	constructor(code, message, data = {}) {
+		super(message);
+		this.name = 'DependencyError';
+		this.code = code;
+		this.data = data;
+	}
+}
+
+/**
+ * Error codes for dependency operations
+ */
+const DEPENDENCY_ERROR_CODES = {
+	CANNOT_MOVE_SUBTASK: 'CANNOT_MOVE_SUBTASK',
+	INVALID_TASK_ID: 'INVALID_TASK_ID',
+	INVALID_SOURCE_TAG: 'INVALID_SOURCE_TAG',
+	INVALID_TARGET_TAG: 'INVALID_TARGET_TAG'
+};
+
+/**
  * Add a dependency to a task
  * @param {string} tasksPath - Path to the tasks.json file
  * @param {number|string} taskId - ID of the task to add dependency to
@@ -1550,22 +1572,37 @@ function getDependentTaskIds(sourceTasks, crossTagDependencies, allTasks) {
 function validateSubtaskMove(taskId, sourceTag, targetTag) {
 	// Parameter validation
 	if (!taskId || typeof taskId !== 'string') {
-		throw new Error('Task ID must be a valid string');
+		throw new DependencyError(
+			DEPENDENCY_ERROR_CODES.INVALID_TASK_ID,
+			'Task ID must be a valid string'
+		);
 	}
 
 	if (!sourceTag || typeof sourceTag !== 'string') {
-		throw new Error('Source tag must be a valid string');
+		throw new DependencyError(
+			DEPENDENCY_ERROR_CODES.INVALID_SOURCE_TAG,
+			'Source tag must be a valid string'
+		);
 	}
 
 	if (!targetTag || typeof targetTag !== 'string') {
-		throw new Error('Target tag must be a valid string');
+		throw new DependencyError(
+			DEPENDENCY_ERROR_CODES.INVALID_TARGET_TAG,
+			'Target tag must be a valid string'
+		);
 	}
 
 	if (taskId.includes('.')) {
-		throw new Error(
+		throw new DependencyError(
+			DEPENDENCY_ERROR_CODES.CANNOT_MOVE_SUBTASK,
 			`Cannot move subtask ${taskId} directly between tags. ` +
 				`First promote it to a full task using: ` +
-				`task-master remove-subtask --id=${taskId} --convert`
+				`task-master remove-subtask --id=${taskId} --convert`,
+			{
+				taskId,
+				sourceTag,
+				targetTag
+			}
 		);
 	}
 }
@@ -1691,5 +1728,7 @@ export {
 	findCrossTagDependencies,
 	getDependentTaskIds,
 	validateSubtaskMove,
-	canMoveWithDependencies
+	canMoveWithDependencies,
+	DependencyError,
+	DEPENDENCY_ERROR_CODES
 };

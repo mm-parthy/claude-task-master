@@ -7,9 +7,14 @@ import {
 } from '../../../../../scripts/modules/ui.js';
 
 // Mock console.log to capture output
+const originalConsoleLog = console.log;
 const mockConsoleLog = jest.fn();
 global.console.log = mockConsoleLog;
 
+// Add afterAll hook to restore
+afterAll(() => {
+	global.console.log = originalConsoleLog;
+});
 describe('Cross-Tag Error Display Functions', () => {
 	beforeEach(() => {
 		mockConsoleLog.mockClear();
@@ -93,6 +98,216 @@ describe('Cross-Tag Error Display Functions', () => {
 			);
 			expect(mockConsoleLog).toHaveBeenCalledWith(
 				expect.stringContaining('remove-subtask --id=5.2 --convert')
+			);
+		});
+
+		it('should handle nested subtask IDs (three levels)', () => {
+			displaySubtaskMoveError('5.2.1', 'feature-auth', 'production');
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'❌ Cannot move subtask 5.2.1 directly between tags'
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('remove-subtask --id=5.2.1 --convert')
+			);
+		});
+
+		it('should handle deeply nested subtask IDs (four levels)', () => {
+			displaySubtaskMoveError('10.3.2.1', 'development', 'testing');
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'❌ Cannot move subtask 10.3.2.1 directly between tags'
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('remove-subtask --id=10.3.2.1 --convert')
+			);
+		});
+
+		it('should handle single-level subtask IDs', () => {
+			displaySubtaskMoveError('15.1', 'master', 'feature-branch');
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'❌ Cannot move subtask 15.1 directly between tags'
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('remove-subtask --id=15.1 --convert')
+			);
+		});
+
+		it('should handle invalid subtask ID format gracefully', () => {
+			displaySubtaskMoveError('invalid-id', 'tag1', 'tag2');
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'❌ Cannot move subtask invalid-id directly between tags'
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('remove-subtask --id=invalid-id --convert')
+			);
+		});
+
+		it('should handle empty subtask ID', () => {
+			displaySubtaskMoveError('', 'source', 'target');
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('❌ Cannot move subtask  directly between tags')
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('remove-subtask --id= --convert')
+			);
+		});
+
+		it('should handle null subtask ID', () => {
+			displaySubtaskMoveError(null, 'source', 'target');
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'❌ Cannot move subtask null directly between tags'
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('remove-subtask --id=null --convert')
+			);
+		});
+
+		it('should handle undefined subtask ID', () => {
+			displaySubtaskMoveError(undefined, 'source', 'target');
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'❌ Cannot move subtask undefined directly between tags'
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('remove-subtask --id=undefined --convert')
+			);
+		});
+
+		it('should handle special characters in subtask ID', () => {
+			displaySubtaskMoveError('5.2@test', 'dev', 'prod');
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'❌ Cannot move subtask 5.2@test directly between tags'
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('remove-subtask --id=5.2@test --convert')
+			);
+		});
+
+		it('should handle numeric subtask IDs', () => {
+			displaySubtaskMoveError('123.456', 'alpha', 'beta');
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'❌ Cannot move subtask 123.456 directly between tags'
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('remove-subtask --id=123.456 --convert')
+			);
+		});
+
+		it('should handle identical source and target tags', () => {
+			displaySubtaskMoveError('7.3', 'same-tag', 'same-tag');
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'❌ Cannot move subtask 7.3 directly between tags'
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('• Source tag: "same-tag"')
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('• Target tag: "same-tag"')
+			);
+		});
+
+		it('should handle empty tag names', () => {
+			displaySubtaskMoveError('9.1', '', '');
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'❌ Cannot move subtask 9.1 directly between tags'
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('• Source tag: ""')
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('• Target tag: ""')
+			);
+		});
+
+		it('should handle null tag names', () => {
+			displaySubtaskMoveError('12.4', null, null);
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'❌ Cannot move subtask 12.4 directly between tags'
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('• Source tag: "null"')
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('• Target tag: "null"')
+			);
+		});
+
+		it('should handle complex tag names with special characters', () => {
+			displaySubtaskMoveError(
+				'3.2.1',
+				'feature/user-auth@v2.0',
+				'production@stable'
+			);
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'❌ Cannot move subtask 3.2.1 directly between tags'
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('• Source tag: "feature/user-auth@v2.0"')
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('• Target tag: "production@stable"')
+			);
+		});
+
+		it('should handle very long subtask IDs', () => {
+			const longId = '1.2.3.4.5.6.7.8.9.10.11.12.13.14.15.16.17.18.19.20';
+			displaySubtaskMoveError(longId, 'short', 'long');
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					`❌ Cannot move subtask ${longId} directly between tags`
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(`remove-subtask --id=${longId} --convert`)
+			);
+		});
+
+		it('should handle whitespace in subtask ID', () => {
+			displaySubtaskMoveError(' 5.2 ', 'clean', 'dirty');
+
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining(
+					'❌ Cannot move subtask  5.2  directly between tags'
+				)
+			);
+			expect(mockConsoleLog).toHaveBeenCalledWith(
+				expect.stringContaining('remove-subtask --id= 5.2  --convert')
 			);
 		});
 	});

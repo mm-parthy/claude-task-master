@@ -17,7 +17,16 @@ describe('Complex Cross-Tag Scenarios', () => {
 		process.chdir(testDir);
 
 		// Initialize task-master
-		execSync('node ../../../../bin/task-master.js init --yes', {
+		const binPath = path.join(
+			__dirname,
+			'..',
+			'..',
+			'..',
+			'..',
+			'bin',
+			'task-master.js'
+		);
+		execSync(`node ${binPath} init --yes`, {
 			stdio: 'pipe'
 		});
 
@@ -293,8 +302,9 @@ describe('Complex Cross-Tag Scenarios', () => {
 			}
 
 			fs.writeFileSync(tasksPath, JSON.stringify(largeTaskSet, null, 2));
-
-			// Test performance with large dependency chain
+			// Should complete within reasonable time
+			const timeout = process.env.CI ? 10000 : 5000;
+			expect(endTime - startTime).toBeLessThan(timeout);
 			const startTime = Date.now();
 			execSync(
 				'node ../../../../bin/task-master.js move --from=50 --from-tag=master --to-tag=in-progress --with-dependencies',

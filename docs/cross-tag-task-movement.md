@@ -280,5 +280,3 @@ task-master move --from=5 --from-tag=backlog --to-tag=in-progress
 # Option 2: Move parent with all subtasks
 task-master move --from=5 --from-tag=backlog --to-tag=in-progress --with-dependencies
 ```
-
-This comprehensive cross-tag task movement system provides powerful organization capabilities while maintaining data integrity and providing clear guidance for resolving conflicts. 

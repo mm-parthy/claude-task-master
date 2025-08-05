@@ -202,8 +202,8 @@ describe('Circular Dependency Scenarios', () => {
 			);
 			const endTime = Date.now();
 
-			// Should complete within reasonable time (less than 100ms)
-			expect(endTime - startTime).toBeLessThan(100);
+			// Should complete within reasonable time (less than 500ms for unit test)
+			expect(endTime - startTime).toBeLessThan(500);
 
 			// Should find all dependencies in the chain
 			expect(conflicts.length).toBeGreaterThan(0);

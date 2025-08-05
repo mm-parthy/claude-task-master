@@ -2818,9 +2818,11 @@ export function displayCrossTagDependencyError(
 	);
 	console.log(chalk.yellow(`\nCross-tag dependency conflicts detected:`));
 
-	conflicts.forEach((conflict) => {
-		console.log(`  • ${conflict.message}`);
-	});
+	if (conflicts.length > 0) {
+		conflicts.forEach((conflict) => {
+			console.log(`  • ${conflict.message}`);
+		});
+	}
 
 	console.log(chalk.cyan(`\nResolution options:`));
 	console.log(

@@ -48,7 +48,11 @@ import {
 	validateStrength
 } from './task-manager.js';
 
-import { moveTasksBetweenTags } from './task-manager/move-task.js';
+import {
+	moveTasksBetweenTags,
+	MoveTaskError,
+	MOVE_ERROR_CODES
+} from './task-manager/move-task.js';
 
 import {
 	createTag,
@@ -63,7 +67,9 @@ import {
 	addDependency,
 	removeDependency,
 	validateDependenciesCommand,
-	fixDependenciesCommand
+	fixDependenciesCommand,
+	DependencyError,
+	DEPENDENCY_ERROR_CODES
 } from './dependency-manager.js';
 
 import {
@@ -4132,29 +4138,37 @@ Examples:
 				} catch (error) {
 					console.error(chalk.red(`Error: ${error.message}`));
 
-					// Enhanced error handling with specific error types
-					if (error.message.includes('cross-tag dependency conflicts')) {
-						// Extract conflicts from error message or use default
-						const conflicts = error.conflicts || [];
+					// Enhanced error handling with structured error objects
+					if (error.code === 'CROSS_TAG_DEPENDENCY_CONFLICTS') {
+						// Use structured error data
+						const conflicts = error.data.conflicts || [];
+						const taskIds = error.data.taskIds || [];
 						displayCrossTagDependencyError(
 							conflicts,
 							sourceTag,
 							toTag,
-							sourceId
+							taskIds.join(', ')
 						);
-					} else if (error.message.includes('Cannot move subtask')) {
-						// Extract taskId from error message
-						const taskIdMatch = error.message.match(/subtask (\d+\.\d+)/);
-						const taskId = taskIdMatch ? taskIdMatch[1] : sourceIds[0];
+					} else if (error.code === 'CANNOT_MOVE_SUBTASK') {
+						// Use structured error data
+						const taskId = error.data.taskId || sourceIds[0];
 						displaySubtaskMoveError(taskId, sourceTag, toTag);
 					} else if (
-						error.message.includes('Source and target tags are the same')
+						error.code === 'SOURCE_TARGET_TAGS_SAME' ||
+						error.code === 'SAME_SOURCE_TARGET_TAG'
 					) {
 						displayInvalidTagCombinationError(
 							sourceTag,
 							toTag,
 							'Source and target tags are identical'
 						);
+					} else if (
+						error.name === 'DependencyError' &&
+						error.code === 'CANNOT_MOVE_SUBTASK'
+					) {
+						// Handle DependencyError for subtask moves
+						const taskId = error.data.taskId || sourceIds[0];
+						displaySubtaskMoveError(taskId, sourceTag, toTag);
 					} else {
 						// General error - show dependency validation hints
 						displayDependencyValidationHints('after-error');
