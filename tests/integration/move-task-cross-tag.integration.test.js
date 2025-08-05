@@ -12,7 +12,38 @@ const mockUtils = {
 	writeJSON: jest.fn(),
 	findProjectRoot: jest.fn(() => '/test/project/root'),
 	log: jest.fn(),
-	setTasksForTag: jest.fn()
+	setTasksForTag: jest.fn(),
+	traverseDependencies: jest.fn((sourceTasks, allTasks, options = {}) => {
+		// Mock realistic dependency behavior for testing
+		const { direction = 'forward' } = options;
+
+		if (direction === 'forward') {
+			// Return dependencies that tasks have
+			const result = [];
+			sourceTasks.forEach((task) => {
+				if (task.dependencies && Array.isArray(task.dependencies)) {
+					result.push(...task.dependencies);
+				}
+			});
+			return result;
+		} else if (direction === 'reverse') {
+			// Return tasks that depend on the source tasks
+			const sourceIds = sourceTasks.map((t) => t.id);
+			const result = [];
+			allTasks.forEach((task) => {
+				if (task.dependencies && Array.isArray(task.dependencies)) {
+					const hasDependency = task.dependencies.some((depId) =>
+						sourceIds.includes(depId)
+					);
+					if (hasDependency) {
+						result.push(task.id);
+					}
+				}
+			});
+			return result;
+		}
+		return [];
+	})
 };
 
 // Mock the utils module

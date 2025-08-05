@@ -15,7 +15,8 @@ import {
 	findTaskById,
 	readJSON,
 	truncate,
-	isSilentMode
+	isSilentMode,
+	formatTaskId
 } from './utils.js';
 import fs from 'fs';
 import {
@@ -2845,6 +2846,21 @@ export function displayCrossTagDependencyError(
 }
 
 /**
+ * Helper function to format task ID for display, handling edge cases with explicit labels
+ * Builds on the existing formatTaskId utility but adds user-friendly display for edge cases
+ * @param {*} taskId - The task ID to format
+ * @returns {string} Formatted task ID for display
+ */
+function formatTaskIdForDisplay(taskId) {
+	if (taskId === null) return 'null';
+	if (taskId === undefined) return 'undefined';
+	if (taskId === '') return '(empty)';
+
+	// Use existing formatTaskId for normal cases, with fallback to 'unknown'
+	return formatTaskId(taskId) || 'unknown';
+}
+
+/**
  * Display enhanced error message for subtask movement restriction
  * @param {string} taskId - The subtask ID that cannot be moved
  * @param {string} sourceTag - Source tag name
@@ -2852,14 +2868,7 @@ export function displayCrossTagDependencyError(
  */
 export function displaySubtaskMoveError(taskId, sourceTag, targetTag) {
 	// Handle null/undefined taskId but preserve the actual value for display
-	const displayTaskId =
-		taskId === null
-			? 'null'
-			: taskId === undefined
-				? 'undefined'
-				: taskId === ''
-					? ''
-					: taskId || 'unknown';
+	const displayTaskId = formatTaskIdForDisplay(taskId);
 
 	// Safe taskId for operations that need a valid string
 	const safeTaskId = taskId || 'unknown';

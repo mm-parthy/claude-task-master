@@ -1,5 +1,11 @@
 import path from 'path';
-import { log, readJSON, writeJSON, setTasksForTag } from '../utils.js';
+import {
+	log,
+	readJSON,
+	writeJSON,
+	setTasksForTag,
+	traverseDependencies
+} from '../utils.js';
 import isTaskDependentOn from './is-task-dependent.js';
 import generateTaskFiles from './generate-task-files.js';
 import {
@@ -9,46 +15,20 @@ import {
 } from '../dependency-manager.js';
 
 /**
- * Find all dependencies recursively for a set of source tasks
+ * Find all dependencies recursively for a set of source tasks with depth limiting
  * @param {Array} sourceTasks - The source tasks to find dependencies for
  * @param {Array} allTasks - All available tasks from all tags
+ * @param {Object} options - Options object
+ * @param {number} options.maxDepth - Maximum recursion depth (default: 50)
+ * @param {boolean} options.includeSelf - Whether to include self-references (default: false)
  * @returns {Array} Array of all dependency task IDs
  */
-function findAllDependenciesRecursively(sourceTasks, allTasks) {
-	const dependentTaskIds = new Set();
-	const processedIds = new Set();
-
-	// Helper function to recursively find all dependencies of a task
-	function findAllDependencies(taskId) {
-		if (processedIds.has(taskId)) {
-			return; // Avoid infinite loops
-		}
-		processedIds.add(taskId);
-
-		const task = allTasks.find((t) => t.id === taskId);
-		if (!task || !Array.isArray(task.dependencies)) {
-			return;
-		}
-
-		task.dependencies.forEach((depId) => {
-			const normalizedDepId =
-				typeof depId === 'string' ? parseInt(depId, 10) : depId;
-			if (!isNaN(normalizedDepId) && normalizedDepId !== taskId) {
-				dependentTaskIds.add(normalizedDepId);
-				// Recursively find dependencies of this dependency
-				findAllDependencies(normalizedDepId);
-			}
-		});
-	}
-
-	// Find all dependencies for each source task
-	sourceTasks.forEach((sourceTask) => {
-		if (sourceTask && sourceTask.id) {
-			findAllDependencies(sourceTask.id);
-		}
+function findAllDependenciesRecursively(sourceTasks, allTasks, options = {}) {
+	return traverseDependencies(sourceTasks, allTasks, {
+		...options,
+		direction: 'forward',
+		logger: { warn: console.warn }
 	});
-
-	return Array.from(dependentTaskIds);
 }
 
 /**
@@ -664,15 +644,12 @@ async function moveTasksBetweenTags(
 	// Get all tasks for validation
 	const allTasks = getAllTasksWithTags(rawData);
 
+	// Normalize all IDs to strings once for consistent comparison
+	const normalizedSearchIds = taskIds.map((id) => String(id));
+
 	const sourceTasks = rawData[sourceTag].tasks.filter((t) => {
-		// Handle type mismatch between string task IDs from CLI and number IDs in JSON
-		const normalizedTaskId = typeof t.id === 'string' ? t.id : String(t.id);
-		const normalizedSearchIds = taskIds.map((id) =>
-			typeof id === 'string' ? id : String(id)
-		);
-		return (
-			normalizedSearchIds.includes(normalizedTaskId) || taskIds.includes(t.id)
-		);
+		const normalizedTaskId = String(t.id);
+		return normalizedSearchIds.includes(normalizedTaskId);
 	});
 
 	// Validate subtask movement
@@ -689,7 +666,8 @@ async function moveTasksBetweenTags(
 		// Find ALL dependencies recursively within the same tag
 		const allDependentTaskIds = findAllDependenciesRecursively(
 			sourceTasks,
-			allTasks
+			allTasks,
+			{ maxDepth: 100, includeSelf: false }
 		);
 		const allTaskIdsToMove = [...new Set([...taskIds, ...allDependentTaskIds])];
 

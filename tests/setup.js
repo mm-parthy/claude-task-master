@@ -7,6 +7,9 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// Capture the actual original working directory before any changes
+const originalWorkingDirectory = process.cwd();
+
 // Store original working directory and project root
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,7 +38,7 @@ process.env.PERPLEXITY_API_KEY = 'test-mock-perplexity-key-for-tests';
 global.wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Store original working directory for tests that need it
-global.originalWorkingDirectory = process.cwd();
+global.originalWorkingDirectory = originalWorkingDirectory;
 global.projectRoot = projectRoot;
 
 // If needed, silence console during tests

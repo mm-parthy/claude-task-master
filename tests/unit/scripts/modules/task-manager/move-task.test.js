@@ -6,7 +6,8 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	readJSON: jest.fn(),
 	writeJSON: jest.fn(),
 	log: jest.fn(),
-	setTasksForTag: jest.fn()
+	setTasksForTag: jest.fn(),
+	traverseDependencies: jest.fn(() => [])
 }));
 
 jest.unstable_mockModule(

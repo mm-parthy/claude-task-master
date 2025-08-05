@@ -7,7 +7,38 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	log: jest.fn(),
 	setTasksForTag: jest.fn(),
 	truncate: jest.fn((t) => t),
-	isSilentMode: jest.fn(() => false)
+	isSilentMode: jest.fn(() => false),
+	traverseDependencies: jest.fn((sourceTasks, allTasks, options = {}) => {
+		// Mock realistic dependency behavior for testing
+		const { direction = 'forward' } = options;
+
+		if (direction === 'forward') {
+			// For forward dependencies: return tasks that the source tasks depend on
+			const result = [];
+			sourceTasks.forEach((task) => {
+				if (task.dependencies && Array.isArray(task.dependencies)) {
+					result.push(...task.dependencies);
+				}
+			});
+			return result;
+		} else if (direction === 'reverse') {
+			// For reverse dependencies: return tasks that depend on the source tasks
+			const sourceIds = sourceTasks.map((t) => t.id);
+			const result = [];
+			allTasks.forEach((task) => {
+				if (task.dependencies && Array.isArray(task.dependencies)) {
+					const hasDependency = task.dependencies.some((depId) =>
+						sourceIds.includes(depId)
+					);
+					if (hasDependency) {
+						result.push(task.id);
+					}
+				}
+			});
+			return result;
+		}
+		return [];
+	})
 }));
 
 jest.unstable_mockModule(

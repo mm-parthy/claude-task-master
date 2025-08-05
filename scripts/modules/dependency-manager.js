@@ -14,6 +14,7 @@ import {
 	taskExists,
 	formatTaskId,
 	findCycles,
+	traverseDependencies,
 	isSilentMode
 } from './utils.js';
 
@@ -1258,13 +1259,22 @@ function validateAndFixDependencies(
 }
 
 /**
- * Check if a task has cross-tag dependencies that would prevent moving
- * @param {Object} task - The task to validate
- * @param {string} sourceTag - Source tag name
- * @param {string} targetTag - Target tag name
- * @param {Array} allTasks - Array of all tasks from all tags
- * @returns {Object} Object with canMove boolean and conflicts array
+ * Recursively find all dependencies for a set of tasks with depth limiting
+ * @param {Array} sourceTasks - Array of source tasks to find dependencies for
+ * @param {Array} allTasks - Array of all available tasks
+ * @param {Object} options - Options object
+ * @param {number} options.maxDepth - Maximum recursion depth (default: 50)
+ * @param {boolean} options.includeSelf - Whether to include self-references (default: false)
+ * @returns {Array} Array of all dependency task IDs
  */
+function findAllDependenciesRecursively(sourceTasks, allTasks, options = {}) {
+	return traverseDependencies(sourceTasks, allTasks, {
+		...options,
+		direction: 'forward',
+		logger: { warn: log.warn || console.warn }
+	});
+}
+
 /**
  * Find dependency task by ID, handling various ID formats
  * @param {string|number} depId - Dependency ID to find
@@ -1441,57 +1451,34 @@ function getDependentTaskIds(sourceTasks, crossTagDependencies, allTasks) {
 		throw new Error('All tasks parameter must be an array');
 	}
 
-	const dependentTaskIds = new Set();
-	const processedIds = new Set();
+	// Use the shared recursive dependency finder
+	const dependentTaskIds = new Set(
+		findAllDependenciesRecursively(sourceTasks, allTasks, {
+			includeSelf: false
+		})
+	);
 
-	// Helper function to recursively find all dependencies of a task
-	function findAllDependencies(taskId) {
-		if (processedIds.has(taskId)) {
-			return; // Avoid infinite loops
-		}
-		processedIds.add(taskId);
-
-		const task = allTasks.find((t) => t.id === taskId);
-		if (!task || !Array.isArray(task.dependencies)) {
+	// Helper function to find all tasks that depend on a given task (reverse dependencies)
+	function findTasksThatDependOn(taskId) {
+		// Find the task object for the given ID
+		const sourceTask = allTasks.find((t) => t.id === taskId);
+		if (!sourceTask) {
 			return;
 		}
 
-		task.dependencies.forEach((depId) => {
-			const normalizedDepId =
-				typeof depId === 'string' ? parseInt(depId, 10) : depId;
-			if (!isNaN(normalizedDepId)) {
-				dependentTaskIds.add(normalizedDepId);
-				// Recursively find dependencies of this dependency
-				findAllDependencies(normalizedDepId);
-			}
+		// Use the shared utility for reverse dependency traversal
+		const reverseDeps = traverseDependencies([sourceTask], allTasks, {
+			direction: 'reverse',
+			includeSelf: false,
+			logger: { warn: log.warn || console.warn }
 		});
-	}
 
-	// Helper function to find all tasks that depend on a given task (reverse dependencies)
-	function findTasksThatDependOn(taskId, visited = new Set()) {
-		if (visited.has(taskId)) {
-			return; // Avoid infinite loops
-		}
-		visited.add(taskId);
-
-		allTasks.forEach((task) => {
-			if (task.dependencies && Array.isArray(task.dependencies)) {
-				const dependsOnTaskId = task.dependencies.some((depId) => {
-					const normalizedDepId =
-						typeof depId === 'string' ? parseInt(depId, 10) : depId;
-					return normalizedDepId === taskId;
-				});
-
-				if (dependsOnTaskId) {
-					dependentTaskIds.add(task.id);
-					// Recursively find tasks that depend on this task
-					findTasksThatDependOn(task.id, visited);
-				}
-			}
-		});
+		// Add all found reverse dependencies to the dependentTaskIds set
+		reverseDeps.forEach((depId) => dependentTaskIds.add(depId));
 	}
 
 	// Add immediate dependency IDs from conflicts and find their dependencies recursively
+	const conflictTasksToProcess = [];
 	crossTagDependencies.forEach((conflict) => {
 		if (conflict && conflict.dependencyId) {
 			const depId =
@@ -1500,17 +1487,29 @@ function getDependentTaskIds(sourceTasks, crossTagDependencies, allTasks) {
 					: conflict.dependencyId;
 			if (!isNaN(depId)) {
 				dependentTaskIds.add(depId);
-				// Recursively find all dependencies of this dependency
-				findAllDependencies(depId);
+				// Find the task object for recursive dependency finding
+				const depTask = allTasks.find((t) => t.id === depId);
+				if (depTask) {
+					conflictTasksToProcess.push(depTask);
+				}
 			}
 		}
 	});
 
+	// Find dependencies of conflict tasks
+	if (conflictTasksToProcess.length > 0) {
+		const conflictDependencies = findAllDependenciesRecursively(
+			conflictTasksToProcess,
+			allTasks,
+			{ includeSelf: false }
+		);
+		conflictDependencies.forEach((depId) => dependentTaskIds.add(depId));
+	}
+
 	// For --with-dependencies, we also need to find all dependencies of the source tasks
 	sourceTasks.forEach((sourceTask) => {
 		if (sourceTask && sourceTask.id) {
-			// Find all tasks that this source task depends on (forward dependencies)
-			findAllDependencies(sourceTask.id);
+			// Find all tasks that this source task depends on (forward dependencies) - already handled above
 
 			// Find all tasks that depend on this source task (reverse dependencies)
 			findTasksThatDependOn(sourceTask.id);
@@ -1797,6 +1796,7 @@ export {
 	getDependentTaskIds,
 	validateSubtaskMove,
 	canMoveWithDependencies,
+	findAllDependenciesRecursively,
 	DependencyError,
 	DEPENDENCY_ERROR_CODES
 };
