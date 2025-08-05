@@ -1259,7 +1259,7 @@ function validateAndFixDependencies(
 }
 
 /**
-/**
+ * Recursively find all dependencies for a set of tasks with depth limiting
  * Recursively find all dependencies for a set of tasks with depth limiting
  * @param {Array} sourceTasks - Array of source tasks to find dependencies for
  * @param {Array} allTasks - Array of all available tasks
