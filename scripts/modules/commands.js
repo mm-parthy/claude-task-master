@@ -4067,7 +4067,6 @@ Examples:
 		.option('--to-tag <tag>', 'Target tag for cross-tag moves')
 		.option('--with-dependencies', 'Move dependent tasks along with main task')
 		.option('--ignore-dependencies', 'Break cross-tag dependencies during move')
-		.option('--force', 'Force move even with dependency conflicts')
 		.action(async (options) => {
 			// Initialize TaskMaster
 			const taskMaster = initTaskMaster({
@@ -4102,8 +4101,7 @@ Examples:
 				const sourceIds = sourceId.split(',').map((id) => id.trim());
 				const moveOptions = {
 					withDependencies: options.withDependencies || false,
-					ignoreDependencies: options.ignoreDependencies || false,
-					force: options.force || false
+					ignoreDependencies: options.ignoreDependencies || false
 				};
 
 				console.log(

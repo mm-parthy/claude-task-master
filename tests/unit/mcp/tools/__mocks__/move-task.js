@@ -111,8 +111,7 @@ const mockMoveTaskCrossTagDirect = jest
 				targetTag: args.targetTag,
 				message: `Successfully moved tasks ${args.sourceIds} from ${args.sourceTag} to ${args.targetTag}`,
 				withDependencies: args.withDependencies || false,
-				ignoreDependencies: args.ignoreDependencies || false,
-				force: args.force || false
+				ignoreDependencies: args.ignoreDependencies || false
 			}
 		};
 	});

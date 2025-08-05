@@ -19,7 +19,6 @@ import {
  * @param {string} args.targetTag - Target tag name
  * @param {boolean} args.withDependencies - Move dependent tasks along with main task
  * @param {boolean} args.ignoreDependencies - Break cross-tag dependencies during move
- * @param {boolean} args.force - Force move even with dependency conflicts
  * @param {string} args.file - Alternative path to the tasks.json file
  * @param {string} args.projectRoot - Project root directory
  * @param {Object} log - Logger object
@@ -104,8 +103,7 @@ export async function moveTaskCrossTagDirect(args, log, context = {}) {
 		// Prepare move options
 		const moveOptions = {
 			withDependencies: args.withDependencies || false,
-			ignoreDependencies: args.ignoreDependencies || false,
-			force: args.force || false
+			ignoreDependencies: args.ignoreDependencies || false
 		};
 
 		// Call the core moveTasksBetweenTags function

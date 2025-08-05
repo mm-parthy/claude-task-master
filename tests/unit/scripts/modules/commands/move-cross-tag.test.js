@@ -71,8 +71,7 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				const sourceIds = sourceId.split(',').map((id) => id.trim());
 				const moveOptions = {
 					withDependencies: options.withDependencies || false,
-					ignoreDependencies: options.ignoreDependencies || false,
-					force: options.force || false
+					ignoreDependencies: options.ignoreDependencies || false
 				};
 
 				await mockMoveTasksBetweenTags(
@@ -92,8 +91,7 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				'in-progress',
 				{
 					withDependencies: options.withDependencies || false,
-					ignoreDependencies: options.ignoreDependencies || false,
-					force: options.force || false
+					ignoreDependencies: options.ignoreDependencies || false
 				},
 				{ projectRoot: '/test/project' }
 			);
@@ -105,8 +103,7 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				fromTag: 'backlog',
 				toTag: 'in-progress',
 				withDependencies: false,
-				ignoreDependencies: false,
-				force: false
+				ignoreDependencies: false
 			};
 
 			await simulateCrossTagMove(options);
@@ -118,8 +115,7 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				fromTag: 'backlog',
 				toTag: 'in-progress',
 				withDependencies: true,
-				ignoreDependencies: false,
-				force: false
+				ignoreDependencies: false
 			};
 
 			await simulateCrossTagMove(
@@ -134,21 +130,19 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				fromTag: 'backlog',
 				toTag: 'in-progress',
 				withDependencies: false,
-				ignoreDependencies: true,
-				force: false
+				ignoreDependencies: true
 			};
 
 			await simulateCrossTagMove(options);
 		});
 
-		it('should handle --force flag', async () => {
+		it('should handle --ignore-dependencies flag', async () => {
 			const options = {
 				from: '1',
 				fromTag: 'backlog',
 				toTag: 'in-progress',
 				withDependencies: false,
-				ignoreDependencies: false,
-				force: true
+				ignoreDependencies: true
 			};
 
 			await simulateCrossTagMove(options);
@@ -236,8 +230,7 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				const sourceIds = sourceId.split(',').map((id) => id.trim());
 				const moveOptions = {
 					withDependencies: options.withDependencies || false,
-					ignoreDependencies: options.ignoreDependencies || false,
-					force: options.force || false
+					ignoreDependencies: options.ignoreDependencies || false
 				};
 
 				await mockMoveTasksBetweenTags(
@@ -284,8 +277,7 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				const sourceIds = sourceId.split(',').map((id) => id.trim());
 				const moveOptions = {
 					withDependencies: options.withDependencies || false,
-					ignoreDependencies: options.ignoreDependencies || false,
-					force: options.force || false
+					ignoreDependencies: options.ignoreDependencies || false
 				};
 
 				await mockMoveTasksBetweenTags(
@@ -330,8 +322,7 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				const sourceIds = sourceId.split(',').map((id) => id.trim());
 				const moveOptions = {
 					withDependencies: options.withDependencies || false,
-					ignoreDependencies: options.ignoreDependencies || false,
-					force: options.force || false
+					ignoreDependencies: options.ignoreDependencies || false
 				};
 
 				await mockMoveTasksBetweenTags(

@@ -6,7 +6,6 @@ import {
 	setTasksForTag,
 	traverseDependencies
 } from '../utils.js';
-import isTaskDependentOn from './is-task-dependent.js';
 import generateTaskFiles from './generate-task-files.js';
 import {
 	findCrossTagDependencies,
@@ -596,7 +595,7 @@ function getAllTasksWithTags(rawData) {
  * @param {Object} options - Move options
  * @param {boolean} options.withDependencies - Move dependent tasks along with main task
  * @param {boolean} options.ignoreDependencies - Break cross-tag dependencies during move
- * @param {boolean} options.force - Force move even with dependency conflicts
+
  * @param {Object} context - Context object containing projectRoot and tag information
  * @returns {Object} Result object with moved task details
  */
@@ -608,11 +607,7 @@ async function moveTasksBetweenTags(
 	options = {},
 	context = {}
 ) {
-	const {
-		withDependencies = false,
-		ignoreDependencies = false,
-		force = false
-	} = options;
+	const { withDependencies = false, ignoreDependencies = false } = options;
 	const { projectRoot } = context;
 
 	// Read the raw data without tag resolution to preserve tagged structure
@@ -694,7 +689,7 @@ async function moveTasksBetweenTags(
 	);
 
 	if (crossTagDependencies.length > 0) {
-		if (force || ignoreDependencies) {
+		if (ignoreDependencies) {
 			// Break cross-tag dependencies (edge case - shouldn't normally happen)
 			sourceTasks.forEach((task) => {
 				task.dependencies = task.dependencies.filter((depId) => {

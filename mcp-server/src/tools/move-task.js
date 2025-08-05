@@ -52,11 +52,7 @@ export function registerMoveTaskTool(server) {
 			ignoreDependencies: z
 				.boolean()
 				.optional()
-				.describe('Break cross-tag dependencies during move'),
-			force: z
-				.boolean()
-				.optional()
-				.describe('Force move even with dependency conflicts')
+				.describe('Break cross-tag dependencies during move')
 		}),
 		execute: withNormalizedProjectRoot(async (args, { log, session }) => {
 			try {
@@ -88,7 +84,6 @@ export function registerMoveTaskTool(server) {
 								targetTag: args.toTag,
 								withDependencies: args.withDependencies || false,
 								ignoreDependencies: args.ignoreDependencies || false,
-								force: args.force || false,
 								tasksJsonPath,
 								projectRoot: args.projectRoot
 							},

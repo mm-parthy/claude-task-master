@@ -151,7 +151,6 @@ describe('MCP Cross-Tag Move Direct Function', () => {
 					targetTag: 'in-progress',
 					withDependencies: true,
 					ignoreDependencies: false,
-					force: true,
 					projectRoot: '/test'
 				},
 				mockLog
