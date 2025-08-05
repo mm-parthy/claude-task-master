@@ -2798,7 +2798,8 @@ export {
 	warnLoadingIndicator,
 	infoLoadingIndicator,
 	displayContextAnalysis,
-	displayCurrentTagIndicator
+	displayCurrentTagIndicator,
+	formatTaskIdForDisplay
 };
 
 /**

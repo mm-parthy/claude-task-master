@@ -3,7 +3,8 @@ import {
 	displayCrossTagDependencyError,
 	displaySubtaskMoveError,
 	displayInvalidTagCombinationError,
-	displayDependencyValidationHints
+	displayDependencyValidationHints,
+	formatTaskIdForDisplay
 } from '../../../../../scripts/modules/ui.js';
 
 // Mock console.log to capture output
@@ -158,11 +159,13 @@ describe('Cross-Tag Error Display Functions', () => {
 
 			expect(mockConsoleLog).toHaveBeenCalledWith(
 				expect.stringContaining(
-					'❌ Cannot move subtask (empty) directly between tags'
+					`❌ Cannot move subtask ${formatTaskIdForDisplay('')} directly between tags`
 				)
 			);
 			expect(mockConsoleLog).toHaveBeenCalledWith(
-				expect.stringContaining('remove-subtask --id=(empty) --convert')
+				expect.stringContaining(
+					`remove-subtask --id=${formatTaskIdForDisplay('')} --convert`
+				)
 			);
 		});
 
