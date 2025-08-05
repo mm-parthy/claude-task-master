@@ -1259,6 +1259,7 @@ function validateAndFixDependencies(
 }
 
 /**
+/**
  * Recursively find all dependencies for a set of tasks with depth limiting
  * @param {Array} sourceTasks - Array of source tasks to find dependencies for
  * @param {Array} allTasks - Array of all available tasks
@@ -1268,6 +1269,12 @@ function validateAndFixDependencies(
  * @returns {Array} Array of all dependency task IDs
  */
 function findAllDependenciesRecursively(sourceTasks, allTasks, options = {}) {
+	if (!Array.isArray(sourceTasks)) {
+		throw new Error('Source tasks parameter must be an array');
+	}
+	if (!Array.isArray(allTasks)) {
+		throw new Error('All tasks parameter must be an array');
+	}
 	return traverseDependencies(sourceTasks, allTasks, {
 		...options,
 		direction: 'forward',

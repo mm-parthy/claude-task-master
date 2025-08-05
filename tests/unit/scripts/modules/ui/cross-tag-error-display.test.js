@@ -157,10 +157,12 @@ describe('Cross-Tag Error Display Functions', () => {
 			displaySubtaskMoveError('', 'source', 'target');
 
 			expect(mockConsoleLog).toHaveBeenCalledWith(
-				expect.stringContaining('❌ Cannot move subtask  directly between tags')
+				expect.stringContaining(
+					'❌ Cannot move subtask (empty) directly between tags'
+				)
 			);
 			expect(mockConsoleLog).toHaveBeenCalledWith(
-				expect.stringContaining('remove-subtask --id= --convert')
+				expect.stringContaining('remove-subtask --id=(empty) --convert')
 			);
 		});
 
