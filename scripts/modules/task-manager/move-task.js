@@ -9,6 +9,49 @@ import {
 } from '../dependency-manager.js';
 
 /**
+ * Find all dependencies recursively for a set of source tasks
+ * @param {Array} sourceTasks - The source tasks to find dependencies for
+ * @param {Array} allTasks - All available tasks from all tags
+ * @returns {Array} Array of all dependency task IDs
+ */
+function findAllDependenciesRecursively(sourceTasks, allTasks) {
+	const dependentTaskIds = new Set();
+	const processedIds = new Set();
+
+	// Helper function to recursively find all dependencies of a task
+	function findAllDependencies(taskId) {
+		if (processedIds.has(taskId)) {
+			return; // Avoid infinite loops
+		}
+		processedIds.add(taskId);
+
+		const task = allTasks.find((t) => t.id === taskId);
+		if (!task || !Array.isArray(task.dependencies)) {
+			return;
+		}
+
+		task.dependencies.forEach((depId) => {
+			const normalizedDepId =
+				typeof depId === 'string' ? parseInt(depId, 10) : depId;
+			if (!isNaN(normalizedDepId) && normalizedDepId !== taskId) {
+				dependentTaskIds.add(normalizedDepId);
+				// Recursively find dependencies of this dependency
+				findAllDependencies(normalizedDepId);
+			}
+		});
+	}
+
+	// Find all dependencies for each source task
+	sourceTasks.forEach((sourceTask) => {
+		if (sourceTask && sourceTask.id) {
+			findAllDependencies(sourceTask.id);
+		}
+	});
+
+	return Array.from(dependentTaskIds);
+}
+
+/**
  * Structured error class for move operations
  */
 class MoveTaskError extends Error {
@@ -620,16 +663,51 @@ async function moveTasksBetweenTags(
 
 	// Get all tasks for validation
 	const allTasks = getAllTasksWithTags(rawData);
-	const sourceTasks = rawData[sourceTag].tasks.filter((t) =>
-		taskIds.includes(t.id)
-	);
+
+	const sourceTasks = rawData[sourceTag].tasks.filter((t) => {
+		// Handle type mismatch between string task IDs from CLI and number IDs in JSON
+		const normalizedTaskId = typeof t.id === 'string' ? t.id : String(t.id);
+		const normalizedSearchIds = taskIds.map((id) =>
+			typeof id === 'string' ? id : String(id)
+		);
+		return (
+			normalizedSearchIds.includes(normalizedTaskId) || taskIds.includes(t.id)
+		);
+	});
 
 	// Validate subtask movement
 	taskIds.forEach((taskId) => {
 		validateSubtaskMove(taskId, sourceTag, targetTag);
 	});
 
-	// Find cross-tag dependencies
+	// Note: Circular dependency checks are not needed here because the dependency-manager
+	// already prevents circular dependencies during task creation and dependency addition
+
+	// Handle --with-dependencies flag first (regardless of cross-tag dependencies)
+	if (withDependencies) {
+		// Move dependent tasks along with main tasks
+		// Find ALL dependencies recursively within the same tag
+		const allDependentTaskIds = findAllDependenciesRecursively(
+			sourceTasks,
+			allTasks
+		);
+		const allTaskIdsToMove = [...new Set([...taskIds, ...allDependentTaskIds])];
+
+		log(
+			'info',
+			`Moving ${allTaskIdsToMove.length} tasks (including dependencies): ${allTaskIdsToMove.join(', ')}`
+		);
+		return performCrossTagMove(
+			allTaskIdsToMove,
+			sourceTag,
+			targetTag,
+			rawData,
+			context,
+			tasksPath
+		);
+	}
+
+	// Find cross-tag dependencies (these shouldn't exist since dependencies are only within tags)
 	const crossTagDependencies = findCrossTagDependencies(
 		sourceTasks,
 		sourceTag,
@@ -639,7 +717,7 @@ async function moveTasksBetweenTags(
 
 	if (crossTagDependencies.length > 0) {
 		if (force || ignoreDependencies) {
-			// Break cross-tag dependencies
+			// Break cross-tag dependencies (edge case - shouldn't normally happen)
 			sourceTasks.forEach((task) => {
 				task.dependencies = task.dependencies.filter((depId) => {
 					// Handle both task IDs and subtask IDs (e.g., "1.2")
@@ -663,27 +741,6 @@ async function moveTasksBetweenTags(
 			log(
 				'warn',
 				`Removed ${crossTagDependencies.length} cross-tag dependencies`
-			);
-		} else if (withDependencies) {
-			// Move dependent tasks along with main tasks
-			const dependentTaskIds = getDependentTaskIds(
-				sourceTasks,
-				crossTagDependencies,
-				allTasks
-			);
-			const allTaskIdsToMove = [...new Set([...taskIds, ...dependentTaskIds])];
-
-			log(
-				'info',
-				`Moving ${allTaskIdsToMove.length} tasks (including dependencies)`
-			);
-			return performCrossTagMove(
-				allTaskIdsToMove,
-				sourceTag,
-				targetTag,
-				rawData,
-				context,
-				tasksPath
 			);
 		} else {
 			// Block move and show error
@@ -828,6 +885,9 @@ function detectIdConflicts(taskIds, targetTag, rawData) {
  * @returns {Object} Task object with preserved metadata
  */
 function preserveTaskMetadata(task, sourceTag, targetTag) {
+	// Update the tag property to reflect the new location
+	task.tag = targetTag;
+
 	// Add move history to task metadata
 	if (!task.metadata) {
 		task.metadata = {};

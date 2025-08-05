@@ -1442,11 +1442,78 @@ function getDependentTaskIds(sourceTasks, crossTagDependencies, allTasks) {
 	}
 
 	const dependentTaskIds = new Set();
+	const processedIds = new Set();
 
-	// Add dependency IDs from conflicts
+	// Helper function to recursively find all dependencies of a task
+	function findAllDependencies(taskId) {
+		if (processedIds.has(taskId)) {
+			return; // Avoid infinite loops
+		}
+		processedIds.add(taskId);
+
+		const task = allTasks.find((t) => t.id === taskId);
+		if (!task || !Array.isArray(task.dependencies)) {
+			return;
+		}
+
+		task.dependencies.forEach((depId) => {
+			const normalizedDepId =
+				typeof depId === 'string' ? parseInt(depId, 10) : depId;
+			if (!isNaN(normalizedDepId)) {
+				dependentTaskIds.add(normalizedDepId);
+				// Recursively find dependencies of this dependency
+				findAllDependencies(normalizedDepId);
+			}
+		});
+	}
+
+	// Helper function to find all tasks that depend on a given task (reverse dependencies)
+	function findTasksThatDependOn(taskId, visited = new Set()) {
+		if (visited.has(taskId)) {
+			return; // Avoid infinite loops
+		}
+		visited.add(taskId);
+
+		allTasks.forEach((task) => {
+			if (task.dependencies && Array.isArray(task.dependencies)) {
+				const dependsOnTaskId = task.dependencies.some((depId) => {
+					const normalizedDepId =
+						typeof depId === 'string' ? parseInt(depId, 10) : depId;
+					return normalizedDepId === taskId;
+				});
+
+				if (dependsOnTaskId) {
+					dependentTaskIds.add(task.id);
+					// Recursively find tasks that depend on this task
+					findTasksThatDependOn(task.id, visited);
+				}
+			}
+		});
+	}
+
+	// Add immediate dependency IDs from conflicts and find their dependencies recursively
 	crossTagDependencies.forEach((conflict) => {
 		if (conflict && conflict.dependencyId) {
-			dependentTaskIds.add(conflict.dependencyId);
+			const depId =
+				typeof conflict.dependencyId === 'string'
+					? parseInt(conflict.dependencyId, 10)
+					: conflict.dependencyId;
+			if (!isNaN(depId)) {
+				dependentTaskIds.add(depId);
+				// Recursively find all dependencies of this dependency
+				findAllDependencies(depId);
+			}
+		}
+	});
+
+	// For --with-dependencies, we also need to find all dependencies of the source tasks
+	sourceTasks.forEach((sourceTask) => {
+		if (sourceTask && sourceTask.id) {
+			// Find all tasks that this source task depends on (forward dependencies)
+			findAllDependencies(sourceTask.id);
+
+			// Find all tasks that depend on this source task (reverse dependencies)
+			findTasksThatDependOn(sourceTask.id);
 		}
 	});
 
@@ -1595,9 +1662,10 @@ function validateSubtaskMove(taskId, sourceTag, targetTag) {
 	if (taskId.includes('.')) {
 		throw new DependencyError(
 			DEPENDENCY_ERROR_CODES.CANNOT_MOVE_SUBTASK,
-			`Cannot move subtask ${taskId} directly between tags. ` +
-				`First promote it to a full task using: ` +
-				`task-master remove-subtask --id=${taskId} --convert`,
+			`Cannot move subtask ${taskId} directly between tags.
+
+First promote it to a full task using:
+  task-master remove-subtask --id=${taskId} --convert`,
 			{
 				taskId,
 				sourceTag,

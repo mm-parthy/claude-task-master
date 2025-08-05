@@ -224,7 +224,7 @@ describe('Cross-Tag Dependency Validation', () => {
 			expect(dependentIds.length).toBeGreaterThan(0);
 		});
 
-		it('should handle multiple dependencies', () => {
+		it('should handle multiple dependencies with recursive resolution', () => {
 			const sourceTasks = [{ id: 5, dependencies: [1, 3], title: 'Task 5' }];
 			const crossTagDependencies = [
 				{ taskId: 5, dependencyId: 1, dependencyTag: 'backlog' },
@@ -236,9 +236,12 @@ describe('Cross-Tag Dependency Validation', () => {
 				mockAllTasks
 			);
 
+			// Should find all dependencies recursively:
+			// Task 5 → [1, 3], Task 1 → [2], so total is [1, 2, 3]
 			expect(dependentIds).toContain(1);
+			expect(dependentIds).toContain(2); // Task 1's dependency
 			expect(dependentIds).toContain(3);
-			expect(dependentIds).toHaveLength(2);
+			expect(dependentIds).toHaveLength(3);
 		});
 
 		it('should return empty array when no dependencies', () => {

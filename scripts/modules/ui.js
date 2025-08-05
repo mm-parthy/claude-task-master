@@ -2851,22 +2851,40 @@ export function displayCrossTagDependencyError(
  * @param {string} targetTag - Target tag name
  */
 export function displaySubtaskMoveError(taskId, sourceTag, targetTag) {
+	// Handle null/undefined taskId but preserve the actual value for display
+	const displayTaskId =
+		taskId === null
+			? 'null'
+			: taskId === undefined
+				? 'undefined'
+				: taskId === ''
+					? ''
+					: taskId || 'unknown';
+
+	// Safe taskId for operations that need a valid string
+	const safeTaskId = taskId || 'unknown';
+	const parentId = safeTaskId.includes('.')
+		? safeTaskId.split('.')[0]
+		: safeTaskId;
+
 	console.log(
-		chalk.red(`\n❌ Cannot move subtask ${taskId} directly between tags`)
+		chalk.red(`\n❌ Cannot move subtask ${displayTaskId} directly between tags`)
 	);
 	console.log(chalk.yellow(`\nSubtask movement restriction:`));
 	console.log(`  • Subtasks cannot be moved directly between tags`);
 	console.log(`  • They must be promoted to full tasks first`);
+	console.log(`  • Source tag: "${sourceTag}"`);
+	console.log(`  • Target tag: "${targetTag}"`);
 
 	console.log(chalk.cyan(`\nResolution options:`));
 	console.log(
-		`  1. Promote subtask to full task: task-master remove-subtask --id=${taskId} --convert`
+		`  1. Promote subtask to full task: task-master remove-subtask --id=${displayTaskId} --convert`
 	);
 	console.log(
-		`  2. Then move the promoted task: task-master move --from=${taskId.split('.')[0]} --from-tag=${sourceTag} --to-tag=${targetTag}`
+		`  2. Then move the promoted task: task-master move --from=${parentId} --from-tag=${sourceTag} --to-tag=${targetTag}`
 	);
 	console.log(
-		`  3. Or move the parent task with all subtasks: task-master move --from=${taskId.split('.')[0]} --from-tag=${sourceTag} --to-tag=${targetTag} --with-dependencies`
+		`  3. Or move the parent task with all subtasks: task-master move --from=${parentId} --from-tag=${sourceTag} --to-tag=${targetTag} --with-dependencies`
 	);
 }
 
