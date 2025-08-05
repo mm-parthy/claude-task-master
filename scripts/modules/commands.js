@@ -105,7 +105,11 @@ import {
 	displayAiUsageSummary,
 	displayMultipleTasksSummary,
 	displayTaggedTasksFYI,
-	displayCurrentTagIndicator
+	displayCurrentTagIndicator,
+	displayCrossTagDependencyError,
+	displaySubtaskMoveError,
+	displayInvalidTagCombinationError,
+	displayDependencyValidationHints
 } from './ui.js';
 import {
 	confirmProfilesRemove,
@@ -4036,7 +4040,9 @@ Examples:
 	// move-task command
 	programInstance
 		.command('move')
-		.description('Move tasks between tags or reorder within tags')
+		.description(
+			'Move tasks between tags or reorder within tags. Supports cross-tag moves with dependency resolution options.'
+		)
 		.option(
 			'-f, --file <file>',
 			'Path to the tasks file',
@@ -4083,11 +4089,7 @@ Examples:
 					console.error(
 						chalk.red('Error: --from parameter is required for cross-tag moves')
 					);
-					console.log(
-						chalk.yellow(
-							'Usage: task-master move --from=<sourceId> --from-tag=<sourceTag> --to-tag=<targetTag>'
-						)
-					);
+					showMoveHelp();
 					process.exit(1);
 				}
 
@@ -4130,18 +4132,32 @@ Examples:
 				} catch (error) {
 					console.error(chalk.red(`Error: ${error.message}`));
 
-					// Provide helpful error messages for cross-tag dependency conflicts
+					// Enhanced error handling with specific error types
 					if (error.message.includes('cross-tag dependency conflicts')) {
-						console.log(chalk.cyan('\nResolution options:'));
-						console.log(
-							`  1. Move with dependencies: task-master move --from=${sourceId} --from-tag=${sourceTag} --to-tag=${toTag} --with-dependencies`
+						// Extract conflicts from error message or use default
+						const conflicts = error.conflicts || [];
+						displayCrossTagDependencyError(
+							conflicts,
+							sourceTag,
+							toTag,
+							sourceId
 						);
-						console.log(
-							`  2. Break dependencies: task-master move --from=${sourceId} --from-tag=${sourceTag} --to-tag=${toTag} --ignore-dependencies`
+					} else if (error.message.includes('Cannot move subtask')) {
+						// Extract taskId from error message
+						const taskIdMatch = error.message.match(/subtask (\d+\.\d+)/);
+						const taskId = taskIdMatch ? taskIdMatch[1] : sourceIds[0];
+						displaySubtaskMoveError(taskId, sourceTag, toTag);
+					} else if (
+						error.message.includes('Source and target tags are the same')
+					) {
+						displayInvalidTagCombinationError(
+							sourceTag,
+							toTag,
+							'Source and target tags are identical'
 						);
-						console.log(
-							`  3. Validate and fix dependencies: task-master validate-dependencies && task-master fix-dependencies`
-						);
+					} else {
+						// General error - show dependency validation hints
+						displayDependencyValidationHints('after-error');
 					}
 
 					process.exit(1);
@@ -4149,20 +4165,10 @@ Examples:
 			} else {
 				// Handle case where both tags are provided but are the same
 				if (sourceTag && toTag && sourceTag === toTag) {
-					console.error(
-						chalk.red(
-							`Error: Source and target tags are the same ("${sourceTag}")`
-						)
-					);
-					console.log(
-						chalk.yellow(
-							'For within-tag moves, use: task-master move --from=<sourceId> --to=<destinationId>'
-						)
-					);
-					console.log(
-						chalk.yellow(
-							'For cross-tag moves, use different tags: task-master move --from=<sourceId> --from-tag=<sourceTag> --to-tag=<targetTag>'
-						)
+					displayInvalidTagCombinationError(
+						sourceTag,
+						toTag,
+						'Source and target tags are identical'
 					);
 					process.exit(1);
 				}
@@ -5049,6 +5055,89 @@ Examples:
 			console.error(chalk.red(`Error: ${err.message}`));
 			process.exit(1);
 		});
+
+	// Helper function to show move command help
+	function showMoveHelp() {
+		console.log(
+			chalk.white.bold('Move Command Help') +
+				'\n\n' +
+				chalk.cyan('Move tasks between tags or reorder within tags.') +
+				'\n\n' +
+				chalk.yellow.bold('Within-Tag Moves:') +
+				'\n' +
+				chalk.white('  task-master move --from=5 --to=7') +
+				'\n' +
+				chalk.white('  task-master move --from=5.2 --to=7.3') +
+				'\n' +
+				chalk.white('  task-master move --from=5,6,7 --to=10,11,12') +
+				'\n\n' +
+				chalk.yellow.bold('Cross-Tag Moves:') +
+				'\n' +
+				chalk.white(
+					'  task-master move --from=5 --from-tag=backlog --to-tag=in-progress'
+				) +
+				'\n' +
+				chalk.white(
+					'  task-master move --from=5,6 --from-tag=backlog --to-tag=done'
+				) +
+				'\n\n' +
+				chalk.yellow.bold('Dependency Resolution:') +
+				'\n' +
+				chalk.white('  # Move with dependencies') +
+				'\n' +
+				chalk.white(
+					'  task-master move --from=5 --from-tag=backlog --to-tag=in-progress --with-dependencies'
+				) +
+				'\n\n' +
+				chalk.white('  # Break dependencies') +
+				'\n' +
+				chalk.white(
+					'  task-master move --from=5 --from-tag=backlog --to-tag=in-progress --ignore-dependencies'
+				) +
+				'\n\n' +
+				chalk.white('  # Force move (may break dependencies)') +
+				'\n' +
+				chalk.white(
+					'  task-master move --from=5 --from-tag=backlog --to-tag=in-progress --force'
+				) +
+				'\n\n' +
+				chalk.yellow.bold('Best Practices:') +
+				'\n' +
+				chalk.white(
+					'  • Use --with-dependencies to move dependent tasks together'
+				) +
+				'\n' +
+				chalk.white(
+					'  • Use --ignore-dependencies to break cross-tag dependencies'
+				) +
+				'\n' +
+				chalk.white(
+					'  • Use --force only when you understand the consequences'
+				) +
+				'\n' +
+				chalk.white(
+					'  • Check dependencies first: task-master validate-dependencies'
+				) +
+				'\n' +
+				chalk.white('  • Fix dependency issues: task-master fix-dependencies') +
+				'\n\n' +
+				chalk.yellow.bold('Error Resolution:') +
+				'\n' +
+				chalk.white(
+					'  • Cross-tag dependency conflicts: Use --with-dependencies or --ignore-dependencies'
+				) +
+				'\n' +
+				chalk.white(
+					'  • Subtask movement: Promote subtask first with remove-subtask --convert'
+				) +
+				'\n' +
+				chalk.white(
+					'  • Invalid tags: Check available tags with task-master tags'
+				) +
+				'\n\n' +
+				chalk.gray('For more help, run: task-master move --help')
+		);
+	}
 
 	return programInstance;
 }

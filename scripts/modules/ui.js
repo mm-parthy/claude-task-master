@@ -2799,3 +2799,128 @@ export {
 	displayContextAnalysis,
 	displayCurrentTagIndicator
 };
+
+/**
+ * Display enhanced error message for cross-tag dependency conflicts
+ * @param {Array} conflicts - Array of cross-tag dependency conflicts
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @param {string} sourceIds - Source task IDs (comma-separated)
+ */
+export function displayCrossTagDependencyError(
+	conflicts,
+	sourceTag,
+	targetTag,
+	sourceIds
+) {
+	console.log(
+		chalk.red(`\n❌ Cannot move tasks from "${sourceTag}" to "${targetTag}"`)
+	);
+	console.log(chalk.yellow(`\nCross-tag dependency conflicts detected:`));
+
+	conflicts.forEach((conflict) => {
+		console.log(`  • ${conflict.message}`);
+	});
+
+	console.log(chalk.cyan(`\nResolution options:`));
+	console.log(
+		`  1. Move with dependencies: task-master move --from=${sourceIds} --from-tag=${sourceTag} --to-tag=${targetTag} --with-dependencies`
+	);
+	console.log(
+		`  2. Break dependencies: task-master move --from=${sourceIds} --from-tag=${sourceTag} --to-tag=${targetTag} --ignore-dependencies`
+	);
+	console.log(
+		`  3. Validate and fix dependencies: task-master validate-dependencies && task-master fix-dependencies`
+	);
+	if (conflicts.length > 0) {
+		console.log(
+			`  4. Move dependencies first: task-master move --from=${conflicts.map((c) => c.dependencyId).join(',')} --from-tag=${conflicts[0].dependencyTag} --to-tag=${targetTag}`
+		);
+	}
+	console.log(
+		`  5. Force move (may break dependencies): task-master move --from=${sourceIds} --from-tag=${sourceTag} --to-tag=${targetTag} --force`
+	);
+}
+
+/**
+ * Display enhanced error message for subtask movement restriction
+ * @param {string} taskId - The subtask ID that cannot be moved
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ */
+export function displaySubtaskMoveError(taskId, sourceTag, targetTag) {
+	console.log(
+		chalk.red(`\n❌ Cannot move subtask ${taskId} directly between tags`)
+	);
+	console.log(chalk.yellow(`\nSubtask movement restriction:`));
+	console.log(`  • Subtasks cannot be moved directly between tags`);
+	console.log(`  • They must be promoted to full tasks first`);
+
+	console.log(chalk.cyan(`\nResolution options:`));
+	console.log(
+		`  1. Promote subtask to full task: task-master remove-subtask --id=${taskId} --convert`
+	);
+	console.log(
+		`  2. Then move the promoted task: task-master move --from=${taskId.split('.')[0]} --from-tag=${sourceTag} --to-tag=${targetTag}`
+	);
+	console.log(
+		`  3. Or move the parent task with all subtasks: task-master move --from=${taskId.split('.')[0]} --from-tag=${sourceTag} --to-tag=${targetTag} --with-dependencies`
+	);
+}
+
+/**
+ * Display enhanced error message for invalid tag combinations
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @param {string} reason - Reason for the error
+ */
+export function displayInvalidTagCombinationError(
+	sourceTag,
+	targetTag,
+	reason
+) {
+	console.log(chalk.red(`\n❌ Invalid tag combination`));
+	console.log(chalk.yellow(`\nError details:`));
+	console.log(`  • Source tag: "${sourceTag}"`);
+	console.log(`  • Target tag: "${targetTag}"`);
+	console.log(`  • Reason: ${reason}`);
+
+	console.log(chalk.cyan(`\nResolution options:`));
+	console.log(`  1. Use different tags for cross-tag moves`);
+	console.log(
+		`  2. Use within-tag move: task-master move --from=<id> --to=<id> --tag=${sourceTag}`
+	);
+	console.log(`  3. Check available tags: task-master tags`);
+}
+
+/**
+ * Display helpful hints for dependency validation commands
+ * @param {string} context - Context for the hints (e.g., 'before-move', 'after-error')
+ */
+export function displayDependencyValidationHints(context = 'general') {
+	const hints = {
+		'before-move': [
+			'💡 Tip: Run "task-master validate-dependencies" to check for dependency issues before moving tasks',
+			'💡 Tip: Use "task-master fix-dependencies" to automatically resolve common dependency problems',
+			'💡 Tip: Consider using --with-dependencies flag to move dependent tasks together'
+		],
+		'after-error': [
+			'🔧 Quick fix: Run "task-master validate-dependencies" to identify specific issues',
+			'🔧 Quick fix: Use "task-master fix-dependencies" to automatically resolve problems',
+			'🔧 Quick fix: Check "task-master show <id>" to see task dependencies before moving'
+		],
+		general: [
+			'💡 Use "task-master validate-dependencies" to check for dependency issues',
+			'💡 Use "task-master fix-dependencies" to automatically resolve problems',
+			'💡 Use "task-master show <id>" to view task dependencies',
+			'💡 Use --with-dependencies flag to move dependent tasks together'
+		]
+	};
+
+	const relevantHints = hints[context] || hints.general;
+
+	console.log(chalk.cyan(`\nHelpful hints:`));
+	relevantHints.forEach((hint) => {
+		console.log(`  ${hint}`);
+	});
+}
