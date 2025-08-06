@@ -81,7 +81,7 @@ Task Master provides enhanced error messages with specific resolution suggestion
 
 When you encounter dependency conflicts, you'll see:
 
-```
+```text
 ❌ Cannot move tasks from "backlog" to "in-progress"
 
 Cross-tag dependency conflicts detected:
@@ -100,7 +100,7 @@ Resolution options:
 
 Subtasks cannot be moved directly between tags:
 
-```
+```text
 ❌ Cannot move subtask 5.2 directly between tags
 
 Subtask movement restriction:
@@ -117,7 +117,7 @@ Resolution options:
 
 When source and target tags are the same:
 
-```
+```text
 ❌ Invalid tag combination
 
 Error details:

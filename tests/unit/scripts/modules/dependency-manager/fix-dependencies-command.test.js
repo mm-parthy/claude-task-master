@@ -28,10 +28,11 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	enableSilentMode: jest.fn(),
 	disableSilentMode: jest.fn(),
 	isEmpty: jest.fn((value) => {
+		if (value === null || value === undefined) return true;
 		if (Array.isArray(value)) return value.length === 0;
 		if (typeof value === 'object' && value !== null)
 			return Object.keys(value).length === 0;
-		return false; // Not an array or object, or is null/undefined
+		return false; // Not an array or object
 	}),
 	resolveEnvVariable: jest.fn()
 }));
