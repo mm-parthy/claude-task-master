@@ -20,7 +20,6 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	taskExists: jest.fn(() => true),
 	formatTaskId: jest.fn((id) => id),
 	findCycles: jest.fn(() => []),
-	traverseDependencies: jest.fn(() => []),
 	isSilentMode: jest.fn(() => true),
 	resolveTag: jest.fn(() => 'master'),
 	getTasksForTag: jest.fn(() => []),
@@ -28,11 +27,10 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	enableSilentMode: jest.fn(),
 	disableSilentMode: jest.fn(),
 	isEmpty: jest.fn((value) => {
-		if (value === null || value === undefined) return true;
 		if (Array.isArray(value)) return value.length === 0;
 		if (typeof value === 'object' && value !== null)
 			return Object.keys(value).length === 0;
-		return false;
+		return false; // Not an array or object, or is null/undefined
 	}),
 	resolveEnvVariable: jest.fn()
 }));
