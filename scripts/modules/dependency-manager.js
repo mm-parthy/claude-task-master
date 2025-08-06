@@ -1307,10 +1307,28 @@ function findDependencyTask(depId, taskId, allTasks) {
 	// First try exact match (for top-level tasks)
 	depTask = allTasks.find((t) => String(t.id) === depIdStr);
 
-	// If not found and it's a subtask reference, try to find the parent task
+	// If not found and it's a subtask reference (contains dot), find the parent task first
 	if (!depTask && depIdStr.includes('.')) {
-		const [parentId] = depIdStr.split('.');
-		depTask = allTasks.find((t) => String(t.id) === parentId);
+		const [parentId, subtaskId] = depIdStr.split('.');
+		const parentTask = allTasks.find((t) => String(t.id) === parentId);
+
+		// If parent task exists and has subtasks, search for the specific subtask
+		if (
+			parentTask &&
+			parentTask.subtasks &&
+			Array.isArray(parentTask.subtasks)
+		) {
+			const foundSubtask = parentTask.subtasks.find(
+				(subtask) => String(subtask.id) === subtaskId
+			);
+			if (foundSubtask) {
+				// Return a task-like object that represents the subtask with full ID
+				depTask = {
+					...foundSubtask,
+					id: `${parentId}.${foundSubtask.id}`
+				};
+			}
+		}
 	}
 
 	// If still not found, try numeric comparison for relative subtask references
@@ -1325,7 +1343,7 @@ function findDependencyTask(depId, taskId, allTasks) {
 				parentTask.subtasks &&
 				Array.isArray(parentTask.subtasks)
 			) {
-				// Search for the subtask within the parent's subtasks array
+				// Search for the subtask within the parent's subtasks array using numeric ID
 				const foundSubtask = parentTask.subtasks.find(
 					(subtask) => subtask.id === numericId
 				);
@@ -1358,8 +1376,10 @@ function findTaskCrossTagConflicts(task, targetTag, allTasks) {
 		return conflicts;
 	}
 
-	// Check each dependency, handling both top-level tasks and subtasks
-	task.dependencies.forEach((depId) => {
+	// Filter out null/undefined dependencies and check each valid dependency
+	const validDependencies = task.dependencies.filter((depId) => depId != null);
+
+	validDependencies.forEach((depId) => {
 		const depTask = findDependencyTask(depId, task.id, allTasks);
 
 		if (depTask && depTask.tag !== targetTag) {
