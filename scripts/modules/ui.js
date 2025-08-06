@@ -406,9 +406,44 @@ function formatDependenciesWithStatus(
 
 		// Check if it's already a fully qualified subtask ID (like "22.1")
 		if (depIdStr.includes('.')) {
-			const [parentId, subtaskId] = depIdStr
-				.split('.')
-				.map((id) => parseInt(id, 10));
+			const parts = depIdStr.split('.');
+			// Validate that it's a proper subtask format (parentId.subtaskId)
+			if (parts.length !== 2 || !parts[0] || !parts[1]) {
+				// Invalid format - treat as regular dependency
+				const numericDepId =
+					typeof depId === 'string' ? parseInt(depId, 10) : depId;
+				const depTaskResult = findTaskById(
+					allTasks,
+					numericDepId,
+					complexityReport
+				);
+				const depTask = depTaskResult.task;
+
+				if (!depTask) {
+					return forConsole
+						? chalk.red(`${depIdStr} (Not found)`)
+						: `${depIdStr} (Not found)`;
+				}
+
+				const status = depTask.status || 'pending';
+				const isDone =
+					status.toLowerCase() === 'done' ||
+					status.toLowerCase() === 'completed';
+				const isInProgress = status.toLowerCase() === 'in-progress';
+
+				if (forConsole) {
+					if (isDone) {
+						return chalk.green.bold(depIdStr);
+					} else if (isInProgress) {
+						return chalk.yellow.bold(depIdStr);
+					} else {
+						return chalk.red.bold(depIdStr);
+					}
+				}
+				return depIdStr;
+			}
+
+			const [parentId, subtaskId] = parts.map((id) => parseInt(id, 10));
 
 			// Find the parent task
 			const parentTask = allTasks.find((t) => t.id === parentId);
@@ -2873,9 +2908,24 @@ export function displaySubtaskMoveError(taskId, sourceTag, targetTag) {
 
 	// Safe taskId for operations that need a valid string
 	const safeTaskId = taskId || 'unknown';
-	const parentId = safeTaskId.includes('.')
-		? safeTaskId.split('.')[0]
-		: safeTaskId;
+
+	// Validate taskId format before splitting
+	let parentId = safeTaskId;
+	if (safeTaskId.includes('.')) {
+		const parts = safeTaskId.split('.');
+		// Check if it's a valid subtask format (parentId.subtaskId)
+		if (parts.length === 2 && parts[0] && parts[1]) {
+			parentId = parts[0];
+		} else {
+			// Invalid format - log warning and use the original taskId
+			console.log(
+				chalk.yellow(
+					`\n⚠️  Warning: Unexpected taskId format "${safeTaskId}". Using as-is for command suggestions.`
+				)
+			);
+			parentId = safeTaskId;
+		}
+	}
 
 	console.log(
 		chalk.red(`\n❌ Cannot move subtask ${displayTaskId} directly between tags`)
@@ -2950,7 +3000,9 @@ export function displayDependencyValidationHints(context = 'general') {
 	const relevantHints = hints[context] || hints.general;
 
 	console.log(chalk.cyan(`\nHelpful hints:`));
-	relevantHints.forEach((hint) => {
+	// Convert to Set to ensure only unique hints are displayed
+	const uniqueHints = new Set(relevantHints);
+	uniqueHints.forEach((hint) => {
 		console.log(`  ${hint}`);
 	});
 }
