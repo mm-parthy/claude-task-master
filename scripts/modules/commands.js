@@ -4168,16 +4168,6 @@ Examples:
 					process.exit(1);
 				}
 			} else {
-				// Handle case where both tags are provided but are the same
-				if (sourceTag && toTag && sourceTag === toTag) {
-					displayInvalidTagCombinationError(
-						sourceTag,
-						toTag,
-						'Source and target tags are identical'
-					);
-					process.exit(1);
-				}
-
 				// Within-tag move logic (existing functionality)
 				if (!sourceId || !destinationId) {
 					console.error(
