@@ -66,14 +66,17 @@ jest.mock('../../../../../scripts/modules/task-manager.js', () => ({
 }));
 
 // Mock tag-management.js
-jest.mock('../../../../../scripts/modules/task-manager/tag-management.js', () => ({
-	createTag: jest.fn(),
-	deleteTag: jest.fn(),
-	tags: jest.fn(),
-	useTag: jest.fn(),
-	renameTag: jest.fn(),
-	copyTag: jest.fn()
-}));
+jest.mock(
+	'../../../../../scripts/modules/task-manager/tag-management.js',
+	() => ({
+		createTag: jest.fn(),
+		deleteTag: jest.fn(),
+		tags: jest.fn(),
+		useTag: jest.fn(),
+		renameTag: jest.fn(),
+		copyTag: jest.fn()
+	})
+);
 
 // Mock dependency-manager.js
 jest.mock('../../../../../scripts/modules/dependency-manager.js', () => ({
@@ -109,12 +112,26 @@ jest.mock('../../../../../src/constants/rules-actions.js', () => ({
 // Mock task-status constants
 jest.mock('../../../../../src/constants/task-status.js', () => ({
 	isValidTaskStatus: jest.fn(() => true),
-	TASK_STATUS_OPTIONS: ['pending', 'in-progress', 'done', 'cancelled', 'deferred']
+	TASK_STATUS_OPTIONS: [
+		'pending',
+		'in-progress',
+		'done',
+		'cancelled',
+		'deferred'
+	]
 }));
 
 // Mock profiles constants
 jest.mock('../../../../../src/constants/profiles.js', () => ({
-	RULE_PROFILES: ['cursor', 'windsurf', 'roo', 'trae', 'claude', 'cline', 'codex']
+	RULE_PROFILES: [
+		'cursor',
+		'windsurf',
+		'roo',
+		'trae',
+		'claude',
+		'cline',
+		'codex'
+	]
 }));
 
 // Mock utility modules
@@ -139,7 +156,10 @@ jest.mock('../../../../../src/utils/profiles.js', () => ({
 
 // Mock task-manager submodules
 jest.mock('../../../../../scripts/modules/task-manager/models.js', () => ({
-	getModelConfiguration: jest.fn(() => ({ success: true, data: { activeModels: {} } })),
+	getModelConfiguration: jest.fn(() => ({
+		success: true,
+		data: { activeModels: {} }
+	})),
 	getAvailableModelsList: jest.fn(() => []),
 	setModel: jest.fn(() => ({ success: true })),
 	getApiKeyStatusReport: jest.fn(() => ({ success: true, data: {} }))
@@ -174,12 +194,14 @@ jest.mock('chalk', () => ({
 
 jest.mock('boxen', () => jest.fn((text) => text));
 
-jest.mock('ora', () => jest.fn(() => ({
-	start: jest.fn(),
-	stop: jest.fn(),
-	succeed: jest.fn(),
-	fail: jest.fn()
-})));
+jest.mock('ora', () =>
+	jest.fn(() => ({
+		start: jest.fn(),
+		stop: jest.fn(),
+		succeed: jest.fn(),
+		fail: jest.fn()
+	}))
+);
 
 jest.mock('inquirer', () => ({
 	prompt: jest.fn()
@@ -217,7 +239,9 @@ async function handleCrossTagMove(moveContext, options) {
 	}
 
 	if (sourceTag === toTag) {
-		console.error(`Error: Source and target tags are the same ("${sourceTag}")`);
+		console.error(
+			`Error: Source and target tags are the same ("${sourceTag}")`
+		);
 		process.exit(1);
 		throw new Error(`Source and target tags are the same ("${sourceTag}")`);
 	}
@@ -244,24 +268,20 @@ async function handleCrossTagMove(moveContext, options) {
 		sourceTag
 	);
 	const sourceTagHasTasks =
-		tasksData &&
-		Array.isArray(tasksData.tasks) &&
-		tasksData.tasks.length > 0;
+		tasksData && Array.isArray(tasksData.tasks) && tasksData.tasks.length > 0;
 
 	// Generate task files for the affected tags
-	await mockGenerateTaskFiles(
-		taskMaster.getTasksPath(),
-		'tasks',
-		{ tag: toTag, projectRoot: taskMaster.getProjectRoot() }
-	);
+	await mockGenerateTaskFiles(taskMaster.getTasksPath(), 'tasks', {
+		tag: toTag,
+		projectRoot: taskMaster.getProjectRoot()
+	});
 
 	// Only regenerate source tag files if it still contains tasks
 	if (sourceTagHasTasks) {
-		await mockGenerateTaskFiles(
-			taskMaster.getTasksPath(),
-			'tasks',
-			{ tag: sourceTag, projectRoot: taskMaster.getProjectRoot() }
-		);
+		await mockGenerateTaskFiles(taskMaster.getTasksPath(), 'tasks', {
+			tag: sourceTag,
+			projectRoot: taskMaster.getProjectRoot()
+		});
 	}
 
 	return result;
