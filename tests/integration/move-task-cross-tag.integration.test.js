@@ -29,11 +29,12 @@ const mockUtils = {
 		} else if (direction === 'reverse') {
 			// Return tasks that depend on the source tasks
 			const sourceIds = sourceTasks.map((t) => t.id);
+			const normalizedSourceIds = sourceIds.map((id) => String(id));
 			const result = [];
 			allTasks.forEach((task) => {
 				if (task.dependencies && Array.isArray(task.dependencies)) {
 					const hasDependency = task.dependencies.some((depId) =>
-						sourceIds.includes(depId)
+						normalizedSourceIds.includes(String(depId))
 					);
 					if (hasDependency) {
 						result.push(task.id);

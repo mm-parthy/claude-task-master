@@ -411,3 +411,88 @@ describe('Cross-Tag Error Display Functions', () => {
 		});
 	});
 });
+
+/**
+ * Test for ID type consistency in dependency comparisons
+ * This test verifies that the fix for mixed string/number ID comparison issues works correctly
+ */
+
+describe('ID Type Consistency in Dependency Comparisons', () => {
+	test('should handle mixed string/number ID comparisons correctly', () => {
+		// Test the pattern that was fixed in the move-task tests
+		const sourceTasks = [
+			{ id: 1, title: 'Task 1' },
+			{ id: 2, title: 'Task 2' },
+			{ id: '3.1', title: 'Subtask 3.1' }
+		];
+
+		const allTasks = [
+			{ id: 1, title: 'Task 1', dependencies: [2, '3.1'] },
+			{ id: 2, title: 'Task 2', dependencies: ['1'] },
+			{
+				id: 3,
+				title: 'Task 3',
+				subtasks: [{ id: 1, title: 'Subtask 3.1', dependencies: [1] }]
+			}
+		];
+
+		// Test the fixed pattern: normalize source IDs and compare with string conversion
+		const sourceIds = sourceTasks.map((t) => t.id);
+		const normalizedSourceIds = sourceIds.map((id) => String(id));
+
+		// Test that dependencies are correctly identified regardless of type
+		const result = [];
+		allTasks.forEach((task) => {
+			if (task.dependencies && Array.isArray(task.dependencies)) {
+				const hasDependency = task.dependencies.some((depId) =>
+					normalizedSourceIds.includes(String(depId))
+				);
+				if (hasDependency) {
+					result.push(task.id);
+				}
+			}
+		});
+
+		// Verify that the comparison works correctly
+		expect(result).toContain(1); // Task 1 has dependency on 2 and '3.1'
+		expect(result).toContain(2); // Task 2 has dependency on '1'
+
+		// Test edge cases
+		const mixedDependencies = [
+			{ id: 1, dependencies: [1, 2, '3.1', '4.2'] },
+			{ id: 2, dependencies: ['1', 3, '5.1'] }
+		];
+
+		const testSourceIds = [1, '3.1', 4];
+		const normalizedTestSourceIds = testSourceIds.map((id) => String(id));
+
+		mixedDependencies.forEach((task) => {
+			const hasMatch = task.dependencies.some((depId) =>
+				normalizedTestSourceIds.includes(String(depId))
+			);
+			expect(typeof hasMatch).toBe('boolean');
+			expect(hasMatch).toBe(true); // Should find matches in both tasks
+		});
+	});
+
+	test('should handle edge cases in ID normalization', () => {
+		// Test various ID formats
+		const testCases = [
+			{ source: 1, dependency: '1', expected: true },
+			{ source: '1', dependency: 1, expected: true },
+			{ source: '3.1', dependency: '3.1', expected: true },
+			{ source: 3, dependency: '3.1', expected: false }, // Different formats
+			{ source: '3.1', dependency: 3, expected: false }, // Different formats
+			{ source: 1, dependency: 2, expected: false }, // No match
+			{ source: '1.2', dependency: '1.2', expected: true },
+			{ source: 1, dependency: null, expected: false }, // Handle null
+			{ source: 1, dependency: undefined, expected: false } // Handle undefined
+		];
+
+		testCases.forEach(({ source, dependency, expected }) => {
+			const normalizedSourceIds = [String(source)];
+			const hasMatch = normalizedSourceIds.includes(String(dependency));
+			expect(hasMatch).toBe(expected);
+		});
+	});
+});

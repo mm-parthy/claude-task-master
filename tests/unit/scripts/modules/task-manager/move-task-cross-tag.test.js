@@ -24,11 +24,12 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 		} else if (direction === 'reverse') {
 			// For reverse dependencies: return tasks that depend on the source tasks
 			const sourceIds = sourceTasks.map((t) => t.id);
+			const normalizedSourceIds = sourceIds.map((id) => String(id));
 			const result = [];
 			allTasks.forEach((task) => {
 				if (task.dependencies && Array.isArray(task.dependencies)) {
 					const hasDependency = task.dependencies.some((depId) =>
-						sourceIds.includes(depId)
+						normalizedSourceIds.includes(String(depId))
 					);
 					if (hasDependency) {
 						result.push(task.id);

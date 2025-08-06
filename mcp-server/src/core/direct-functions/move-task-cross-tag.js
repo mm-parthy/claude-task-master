@@ -97,42 +97,41 @@ export async function moveTaskCrossTagDirect(args, log, context = {}) {
 		// Enable silent mode to prevent console output during MCP operation
 		enableSilentMode();
 
-		// Parse source IDs
-		const sourceIds = args.sourceIds.split(',').map((id) => id.trim());
+		try {
+			// Parse source IDs
+			const sourceIds = args.sourceIds.split(',').map((id) => id.trim());
 
-		// Prepare move options
-		const moveOptions = {
-			withDependencies: args.withDependencies || false,
-			ignoreDependencies: args.ignoreDependencies || false
-		};
+			// Prepare move options
+			const moveOptions = {
+				withDependencies: args.withDependencies || false,
+				ignoreDependencies: args.ignoreDependencies || false
+			};
 
-		// Call the core moveTasksBetweenTags function
-		const result = await moveTasksBetweenTags(
-			tasksPath,
-			sourceIds,
-			args.sourceTag,
-			args.targetTag,
-			moveOptions,
-			{ projectRoot }
-		);
-
-		// Restore console output
-		disableSilentMode();
-
-		return {
-			success: true,
-			data: {
-				...result,
-				message: `Successfully moved ${sourceIds.length} task(s) from "${args.sourceTag}" to "${args.targetTag}"`,
+			// Call the core moveTasksBetweenTags function
+			const result = await moveTasksBetweenTags(
+				tasksPath,
+				sourceIds,
+				args.sourceTag,
+				args.targetTag,
 				moveOptions,
-				sourceTag: args.sourceTag,
-				targetTag: args.targetTag
-			}
-		};
-	} catch (error) {
-		// Restore console output in case of error
-		disableSilentMode();
+				{ projectRoot }
+			);
 
+			return {
+				success: true,
+				data: {
+					...result,
+					message: `Successfully moved ${sourceIds.length} task(s) from "${args.sourceTag}" to "${args.targetTag}"`,
+					moveOptions,
+					sourceTag: args.sourceTag,
+					targetTag: args.targetTag
+				}
+			};
+		} finally {
+			// Restore console output - always executed regardless of success or error
+			disableSilentMode();
+		}
+	} catch (error) {
 		log.error(`Failed to move tasks between tags: ${error.message}`);
 		log.error(`Error code: ${error.code}, Error name: ${error.name}`);
 
