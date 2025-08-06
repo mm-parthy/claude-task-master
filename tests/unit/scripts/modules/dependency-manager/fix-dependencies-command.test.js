@@ -20,6 +20,7 @@ jest.unstable_mockModule('../../../../../scripts/modules/utils.js', () => ({
 	taskExists: jest.fn(() => true),
 	formatTaskId: jest.fn((id) => id),
 	findCycles: jest.fn(() => []),
+	traverseDependencies: jest.fn(() => []),
 	isSilentMode: jest.fn(() => true),
 	resolveTag: jest.fn(() => 'master'),
 	getTasksForTag: jest.fn(() => []),

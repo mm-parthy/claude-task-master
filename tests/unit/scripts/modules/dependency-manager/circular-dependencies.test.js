@@ -184,7 +184,16 @@ describe('Circular Dependency Scenarios', () => {
 				title: 'Task 3',
 				dependencies: [5],
 				status: 'pending',
-				tag: 'backlog'
+				tag: 'backlog',
+				subtasks: [
+					{
+						id: 1,
+						title: 'Subtask 3.1',
+						dependencies: [],
+						status: 'pending',
+						tag: 'backlog'
+					}
+				]
 			},
 			{
 				id: 4,
