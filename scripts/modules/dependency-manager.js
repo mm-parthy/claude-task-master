@@ -1293,6 +1293,42 @@ function findAllDependenciesRecursively(sourceTasks, allTasks, options = {}) {
  * @param {Array} allTasks - Array of all tasks to search
  * @returns {Object|null} Found dependency task or null
  */
+/**
+ * Find a subtask within a parent task's subtasks array
+ * @param {string} parentId - The parent task ID
+ * @param {string|number} subtaskId - The subtask ID to find
+ * @param {Array} allTasks - Array of all tasks to search in
+ * @param {boolean} useStringComparison - Whether to use string comparison for subtaskId
+ * @returns {Object|null} The found subtask with full ID or null if not found
+ */
+function findSubtaskInParent(
+	parentId,
+	subtaskId,
+	allTasks,
+	useStringComparison = false
+) {
+	// Convert parentId to numeric for proper comparison with top-level task IDs
+	const numericParentId = parseInt(parentId, 10);
+	const parentTask = allTasks.find((t) => t.id === numericParentId);
+
+	if (parentTask && parentTask.subtasks && Array.isArray(parentTask.subtasks)) {
+		const foundSubtask = parentTask.subtasks.find((subtask) =>
+			useStringComparison
+				? String(subtask.id) === String(subtaskId)
+				: subtask.id === subtaskId
+		);
+		if (foundSubtask) {
+			// Return a task-like object that represents the subtask with full ID
+			return {
+				...foundSubtask,
+				id: `${parentId}.${foundSubtask.id}`
+			};
+		}
+	}
+
+	return null;
+}
+
 function findDependencyTask(depId, taskId, allTasks) {
 	if (!depId) {
 		return null;
@@ -1310,25 +1346,7 @@ function findDependencyTask(depId, taskId, allTasks) {
 	// If not found and it's a subtask reference (contains dot), find the parent task first
 	if (!depTask && depIdStr.includes('.')) {
 		const [parentId, subtaskId] = depIdStr.split('.');
-		const parentTask = allTasks.find((t) => String(t.id) === parentId);
-
-		// If parent task exists and has subtasks, search for the specific subtask
-		if (
-			parentTask &&
-			parentTask.subtasks &&
-			Array.isArray(parentTask.subtasks)
-		) {
-			const foundSubtask = parentTask.subtasks.find(
-				(subtask) => String(subtask.id) === subtaskId
-			);
-			if (foundSubtask) {
-				// Return a task-like object that represents the subtask with full ID
-				depTask = {
-					...foundSubtask,
-					id: `${parentId}.${foundSubtask.id}`
-				};
-			}
-		}
+		depTask = findSubtaskInParent(parentId, subtaskId, allTasks, true);
 	}
 
 	// If still not found, try numeric comparison for relative subtask references
@@ -1337,24 +1355,7 @@ function findDependencyTask(depId, taskId, allTasks) {
 		// For subtasks, this might be a relative reference within the same parent
 		if (taskId && typeof taskId === 'string' && taskId.includes('.')) {
 			const [parentId] = taskId.split('.');
-			const parentTask = allTasks.find((t) => String(t.id) === parentId);
-			if (
-				parentTask &&
-				parentTask.subtasks &&
-				Array.isArray(parentTask.subtasks)
-			) {
-				// Search for the subtask within the parent's subtasks array using numeric ID
-				const foundSubtask = parentTask.subtasks.find(
-					(subtask) => subtask.id === numericId
-				);
-				if (foundSubtask) {
-					// Return a task-like object that represents the subtask with full ID
-					depTask = {
-						...foundSubtask,
-						id: `${parentId}.${foundSubtask.id}`
-					};
-				}
-			}
+			depTask = findSubtaskInParent(parentId, numericId, allTasks, false);
 		}
 	}
 
