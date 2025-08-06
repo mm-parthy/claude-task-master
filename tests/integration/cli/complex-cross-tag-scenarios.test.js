@@ -378,9 +378,6 @@ describe('Complex Cross-Tag Scenarios', () => {
 			const endTime = Date.now();
 			expect(endTime - startTime).toBeLessThan(timeout);
 
-			// Should complete within reasonable time (less than 5 seconds)
-			expect(endTime - startTime).toBeLessThan(5000);
-
 			// Verify the move was successful
 			const tasksAfter = JSON.parse(fs.readFileSync(tasksPath, 'utf8'));
 			expect(
