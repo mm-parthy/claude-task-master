@@ -34,7 +34,7 @@ export function registerMoveTaskTool(server) {
 				.string()
 				.optional()
 				.describe(
-					'ID of the destination (e.g., "7" or "7.3"). Required for within-tag moves. Not used for cross-tag moves - tasks retain their original IDs in the target tag'
+					'ID of the destination (e.g., "7" or "7.3"). Required for within-tag moves. For cross-tag moves, if omitted, task will be moved to the target tag maintaining its ID'
 				),
 			file: z.string().optional().describe('Custom path to tasks.json file'),
 			projectRoot: z
@@ -128,16 +128,9 @@ export function registerMoveTaskTool(server) {
 
 					// Validate matching IDs count
 					if (fromIds.length !== toIds.length) {
-						return createErrorResponse(
-							'The number of source and destination IDs must match',
-							'MISMATCHED_ID_COUNT'
-						);
-					}
-
-					// If moving multiple tasks
 					if (fromIds.length > 1) {
 						const results = [];
-						const skippedMoves = [];
+						const skipped = [];
 						// Move tasks one by one, only generate files on the last move
 						for (let i = 0; i < fromIds.length; i++) {
 							const fromId = fromIds[i];
@@ -146,11 +139,7 @@ export function registerMoveTaskTool(server) {
 							// Skip if source and destination are the same
 							if (fromId === toId) {
 								log.info(`Skipping ${fromId} -> ${toId} (same ID)`);
-								skippedMoves.push({
-									sourceId: fromId,
-									destinationId: toId,
-									reason: 'Source and destination IDs are identical'
-								});
+								skipped.push({ fromId, toId, reason: 'same ID' });
 								continue;
 							}
 
@@ -177,6 +166,21 @@ export function registerMoveTaskTool(server) {
 							}
 						}
 
+						return handleApiResult(
+							{
+								success: true,
+								data: {
+									moves: results,
+									skipped: skipped.length > 0 ? skipped : undefined,
+									message: `Successfully moved ${results.length} tasks${skipped.length > 0 ? `, skipped ${skipped.length}` : ''}`
+								}
+							},
+							log,
+							'Error moving multiple tasks',
+							undefined,
+							args.projectRoot
+						);
+					}
 						return handleApiResult(
 							{
 								success: true,
