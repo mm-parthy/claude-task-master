@@ -692,7 +692,9 @@ async function resolveDependencies(
 
 		// Filter dependent IDs to those that actually exist in the source tag
 		const sourceTagIds = new Set(
-			tasksInSourceTag.map((t) => (typeof t.id === 'string' ? parseInt(t.id, 10) : t.id))
+			tasksInSourceTag.map((t) =>
+				typeof t.id === 'string' ? parseInt(t.id, 10) : t.id
+			)
 		);
 		const allDependentTaskIds = allDependentTaskIdsRaw.filter((depId) => {
 			// Only numeric task IDs are eligible to be moved (subtasks cannot be moved cross-tag)
@@ -739,15 +741,20 @@ async function resolveDependencies(
 						const [parentId] = depId.split('.').map((id) => parseInt(id, 10));
 						parentTaskId = parentId;
 					} else {
-						parentTaskId = typeof depId === 'string' ? parseInt(depId, 10) : depId;
+						parentTaskId =
+							typeof depId === 'string' ? parseInt(depId, 10) : depId;
 					}
 
 					// If dependency resolves to a task in the source tag, drop it (would be cross-tag after move)
-					const existsInSource = sourceTagTasks.some((t) => t.id === parentTaskId);
+					const existsInSource = sourceTagTasks.some(
+						(t) => t.id === parentTaskId
+					);
 					if (existsInSource) return false;
 
 					// If dependency resolves to a task in the target tag, keep it
-					const existsInTarget = targetTagTasks.some((t) => t.id === parentTaskId);
+					const existsInTarget = targetTagTasks.some(
+						(t) => t.id === parentTaskId
+					);
 					if (existsInTarget) return true;
 
 					// Otherwise, keep as-is (unknown/unresolved dependency)
@@ -881,12 +888,12 @@ async function executeMoveOperation(
  * @returns {Object} Final result object
  */
 async function finalizeMove(
-    moveResult,
-    tasksPath,
-    context,
-    sourceTag,
-    targetTag,
-    dependencyResolution
+	moveResult,
+	tasksPath,
+	context,
+	sourceTag,
+	targetTag,
+	dependencyResolution
 ) {
 	const { projectRoot } = context;
 	const { rawData, movedTasks } = moveResult;
@@ -894,20 +901,23 @@ async function finalizeMove(
 	// Write the updated data
 	writeJSON(tasksPath, rawData, projectRoot, null);
 
-    const response = {
-        message: `Successfully moved ${movedTasks.length} tasks from "${sourceTag}" to "${targetTag}"`,
-        movedTasks
-    };
+	const response = {
+		message: `Successfully moved ${movedTasks.length} tasks from "${sourceTag}" to "${targetTag}"`,
+		movedTasks
+	};
 
-    // If we intentionally broke cross-tag dependencies, provide tips to validate & fix
-    if (dependencyResolution && dependencyResolution.type === 'ignored-dependencies') {
-        response.tips = [
-            'Run "task-master validate-dependencies" to check for dependency issues.',
-            'Run "task-master fix-dependencies" to automatically repair dangling dependencies.'
-        ];
-    }
+	// If we intentionally broke cross-tag dependencies, provide tips to validate & fix
+	if (
+		dependencyResolution &&
+		dependencyResolution.type === 'ignored-dependencies'
+	) {
+		response.tips = [
+			'Run "task-master validate-dependencies" to check for dependency issues.',
+			'Run "task-master fix-dependencies" to automatically repair dangling dependencies.'
+		];
+	}
 
-    return response;
+	return response;
 }
 
 /**
@@ -943,7 +953,7 @@ async function moveTasksBetweenTags(
 	const { rawData, sourceTasks, allTasks } = await prepareTaskData(validation);
 
 	// 3. Handle dependencies
-    const { tasksToMove, dependencyResolution } = await resolveDependencies(
+	const { tasksToMove, dependencyResolution } = await resolveDependencies(
 		sourceTasks,
 		allTasks,
 		options,
@@ -963,14 +973,14 @@ async function moveTasksBetweenTags(
 	);
 
 	// 5. Save and return
-    return await finalizeMove(
-        moveResult,
-        tasksPath,
-        context,
-        sourceTag,
-        targetTag,
-        dependencyResolution
-    );
+	return await finalizeMove(
+		moveResult,
+		tasksPath,
+		context,
+		sourceTag,
+		targetTag,
+		dependencyResolution
+	);
 }
 
 /**

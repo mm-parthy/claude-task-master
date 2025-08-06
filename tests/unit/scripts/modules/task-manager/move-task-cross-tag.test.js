@@ -240,7 +240,7 @@ describe('Cross-Tag Task Movement', () => {
 				'in-progress': expect.objectContaining({
 					tasks: expect.arrayContaining([
 						expect.objectContaining({ id: 1 }),
-						expect.objectContaining({ id: 2 }), // the backlog:2 now moved
+						expect.objectContaining({ id: 2 }) // the backlog:2 now moved
 						// ensure existing in-progress:2 remains (by id) but we don't double-add or fetch deps from it
 					])
 				})

@@ -4458,13 +4458,19 @@ Examples:
 					console.error(chalk.red(`Error: ${errMsg}`));
 					console.log(
 						'\n' +
-						chalk.yellow.bold('Conflict: ID already exists in target tag') +
-						'\n' +
-						chalk.white('  • Choose a different target tag without conflicting IDs') +
-						'\n' +
-						chalk.white('  • Move a different set of IDs (avoid existing ones)') +
-						'\n' +
-						chalk.white('  • If needed, move within-tag to a new ID first, then cross-tag move')
+							chalk.yellow.bold('Conflict: ID already exists in target tag') +
+							'\n' +
+							chalk.white(
+								'  • Choose a different target tag without conflicting IDs'
+							) +
+							'\n' +
+							chalk.white(
+								'  • Move a different set of IDs (avoid existing ones)'
+							) +
+							'\n' +
+							chalk.white(
+								'  • If needed, move within-tag to a new ID first, then cross-tag move'
+							)
 					);
 					process.exit(1);
 				}

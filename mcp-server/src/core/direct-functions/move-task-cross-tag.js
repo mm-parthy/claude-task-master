@@ -189,7 +189,10 @@ export async function moveTaskCrossTagDirect(args, log, context = {}) {
 				'Verify task IDs exist: task-master list',
 				'Check task details: task-master show <id>'
 			];
-		} else if (error.code === 'TASK_ALREADY_EXISTS' || error.message.includes('already exists in target tag')) {
+		} else if (
+			error.code === 'TASK_ALREADY_EXISTS' ||
+			error.message.includes('already exists in target tag')
+		) {
 			// Target tag has an ID collision
 			errorCode = 'TASK_ALREADY_EXISTS';
 			suggestions = [

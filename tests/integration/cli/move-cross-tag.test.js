@@ -197,7 +197,9 @@ describe('Cross-Tag Move CLI Integration', () => {
 				) {
 					console.log('');
 					console.log('Conflict: ID already exists in target tag');
-					console.log('  • Choose a different target tag without conflicting IDs');
+					console.log(
+						'  • Choose a different target tag without conflicting IDs'
+					);
 					console.log('  • Move a different set of IDs (avoid existing ones)');
 					console.log(
 						'  • If needed, move within-tag to a new ID first, then cross-tag move'
@@ -486,7 +488,9 @@ describe('Cross-Tag Move CLI Integration', () => {
 		const { errorMessages, logMessages, restore } = captureConsoleAndExit();
 		try {
 			// Arrange: mock move to throw collision
-			const err = new Error('Task 1 already exists in target tag "in-progress"');
+			const err = new Error(
+				'Task 1 already exists in target tag "in-progress"'
+			);
 			mockMoveTasksBetweenTags.mockRejectedValue(err);
 
 			await expect(
@@ -615,7 +619,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 		);
 	});
 
-// Note: --force flag is no longer supported for cross-tag moves
+	// Note: --force flag is no longer supported for cross-tag moves
 
 	it('should fail when invalid task ID is provided', async () => {
 		const options = {
@@ -697,11 +701,11 @@ describe('Cross-Tag Move CLI Integration', () => {
 		restore();
 	});
 
-// Note: --force combinations removed
+	// Note: --force combinations removed
 
-// Note: --force combinations removed
+	// Note: --force combinations removed
 
-// Note: --force combinations removed
+	// Note: --force combinations removed
 
 	it('should handle whitespace in comma-separated task IDs', async () => {
 		// Mock successful cross-tag move with whitespace
