@@ -785,7 +785,7 @@ async function executeMoveOperation(
 	const movedTasks = [];
 
 	// Move each task from source to target tag
-	tasksToMove.forEach((taskId) => {
+	for (const taskId of tasksToMove) {
 		// Normalize taskId to number for comparison
 		const normalizedTaskId =
 			typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
@@ -832,7 +832,7 @@ async function executeMoveOperation(
 		});
 
 		log('info', `Moved task ${taskId} from "${sourceTag}" to "${targetTag}"`);
-	});
+	}
 
 	return { rawData, movedTasks };
 }
