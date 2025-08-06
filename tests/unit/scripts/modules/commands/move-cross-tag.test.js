@@ -1,228 +1,130 @@
 import { jest } from '@jest/globals';
 import chalk from 'chalk';
 
-// Mock the modules
-const mockMoveTasksBetweenTags = jest.fn();
-const mockGenerateTaskFiles = jest.fn();
-const mockInitTaskMaster = jest.fn();
-const mockFindProjectRoot = jest.fn();
-const mockReadJSON = jest.fn();
+// ============================================================================
+// MOCK FACTORY & CONFIGURATION SYSTEM
+// ============================================================================
 
-// Mock all the modules that commands.js imports
-jest.mock('../../../../../scripts/modules/task-manager/move-task.js', () => ({
-	moveTasksBetweenTags: mockMoveTasksBetweenTags
-}));
-
-jest.mock('../../../../../scripts/modules/utils.js', () => ({
-	findProjectRoot: mockFindProjectRoot,
-	generateTaskFiles: mockGenerateTaskFiles,
-	readJSON: mockReadJSON,
-	log: jest.fn(),
-	writeJSON: jest.fn(),
-	getCurrentTag: jest.fn(() => 'master'),
-	detectCamelCaseFlags: jest.fn(),
-	toKebabCase: jest.fn()
-}));
-
-jest.mock('../../../../../scripts/modules/config-manager.js', () => ({
-	initTaskMaster: mockInitTaskMaster,
-	isApiKeySet: jest.fn(() => true),
-	getDebugFlag: jest.fn(() => false),
-	getConfig: jest.fn(() => ({})),
-	writeConfig: jest.fn(),
-	ConfigurationError: class ConfigurationError extends Error {},
-	isConfigFilePresent: jest.fn(() => true),
-	getAvailableModels: jest.fn(() => []),
-	getBaseUrlForRole: jest.fn(() => 'https://api.example.com'),
-	getDefaultNumTasks: jest.fn(() => 10),
-	getDefaultSubtasks: jest.fn(() => 3)
-}));
-
-// Mock task-manager.js
-jest.mock('../../../../../scripts/modules/task-manager.js', () => ({
-	parsePRD: jest.fn(),
-	updateTasks: jest.fn(),
-	generateTaskFiles: mockGenerateTaskFiles,
-	setTaskStatus: jest.fn(),
-	listTasks: jest.fn(),
-	expandTask: jest.fn(),
-	expandAllTasks: jest.fn(),
-	clearSubtasks: jest.fn(),
-	addTask: jest.fn(),
-	addSubtask: jest.fn(),
-	removeSubtask: jest.fn(),
-	analyzeTaskComplexity: jest.fn(),
-	updateTaskById: jest.fn(),
-	updateSubtaskById: jest.fn(),
-	removeTask: jest.fn(),
-	findTaskById: jest.fn(),
-	taskExists: jest.fn(),
-	moveTask: jest.fn(),
-	migrateProject: jest.fn(),
-	setResponseLanguage: jest.fn(),
-	scopeUpTask: jest.fn(),
-	scopeDownTask: jest.fn(),
-	validateStrength: jest.fn()
-}));
-
-// Mock tag-management.js
-jest.mock(
-	'../../../../../scripts/modules/task-manager/tag-management.js',
-	() => ({
-		createTag: jest.fn(),
-		deleteTag: jest.fn(),
-		tags: jest.fn(),
-		useTag: jest.fn(),
-		renameTag: jest.fn(),
-		copyTag: jest.fn()
-	})
-);
-
-// Mock dependency-manager.js
-jest.mock('../../../../../scripts/modules/dependency-manager.js', () => ({
-	addDependency: jest.fn(),
-	removeDependency: jest.fn(),
-	validateDependenciesCommand: jest.fn(),
-	fixDependenciesCommand: jest.fn(),
-	DependencyError: class DependencyError extends Error {},
-	DEPENDENCY_ERROR_CODES: {}
-}));
-
-// Mock constants
-jest.mock('../../../../../src/constants/providers.js', () => ({
-	CUSTOM_PROVIDERS: []
-}));
-
-jest.mock('../../../../../src/constants/paths.js', () => ({
-	COMPLEXITY_REPORT_FILE: 'complexity-report.json',
-	TASKMASTER_TASKS_FILE: 'tasks/tasks.json',
-	TASKMASTER_DOCS_DIR: 'docs'
-}));
-
-// Mock rules-actions constants
-jest.mock('../../../../../src/constants/rules-actions.js', () => ({
-	isValidRulesAction: jest.fn(() => true),
-	RULES_ACTIONS: {
-		ADD: 'add',
-		REMOVE: 'remove'
+/**
+ * Mock configuration object to enable/disable specific mocks per test
+ */
+const mockConfig = {
+	// Core functionality mocks (always needed)
+	core: {
+		moveTasksBetweenTags: true,
+		generateTaskFiles: true,
+		readJSON: true,
+		initTaskMaster: true,
+		findProjectRoot: true
 	},
-	RULES_SETUP_ACTION: 'setup'
-}));
+	// Console and process mocks
+	console: {
+		error: true,
+		log: true,
+		exit: true
+	},
+	// TaskMaster instance mocks
+	taskMaster: {
+		getCurrentTag: true,
+		getTasksPath: true,
+		getProjectRoot: true
+	}
+};
 
-// Mock task-status constants
-jest.mock('../../../../../src/constants/task-status.js', () => ({
-	isValidTaskStatus: jest.fn(() => true),
-	TASK_STATUS_OPTIONS: [
-		'pending',
-		'in-progress',
-		'done',
-		'cancelled',
-		'deferred'
-	]
-}));
+/**
+ * Creates mock functions with consistent naming
+ */
+function createMock(name) {
+	return jest.fn().mockName(name);
+}
 
-// Mock profiles constants
-jest.mock('../../../../../src/constants/profiles.js', () => ({
-	RULE_PROFILES: [
-		'cursor',
-		'windsurf',
-		'roo',
-		'trae',
-		'claude',
-		'cline',
-		'codex'
-	]
-}));
+/**
+ * Mock factory for creating focused mocks based on configuration
+ */
+function createMockFactory(config = mockConfig) {
+	const mocks = {};
 
-// Mock utility modules
-jest.mock('../../../../../src/utils/getVersion.js', () => ({
-	getTaskMasterVersion: jest.fn(() => '1.0.0')
-}));
+	// Core functionality mocks
+	if (config.core?.moveTasksBetweenTags) {
+		mocks.moveTasksBetweenTags = createMock('moveTasksBetweenTags');
+	}
+	if (config.core?.generateTaskFiles) {
+		mocks.generateTaskFiles = createMock('generateTaskFiles');
+	}
+	if (config.core?.readJSON) {
+		mocks.readJSON = createMock('readJSON');
+	}
+	if (config.core?.initTaskMaster) {
+		mocks.initTaskMaster = createMock('initTaskMaster');
+	}
+	if (config.core?.findProjectRoot) {
+		mocks.findProjectRoot = createMock('findProjectRoot');
+	}
 
-jest.mock('../../../../../src/utils/rule-transformer.js', () => ({
-	convertAllRulesToProfileRules: jest.fn(() => ({ added: 0, skipped: 0 })),
-	removeProfileRules: jest.fn(() => ({ removed: 0, skipped: 0 })),
-	isValidProfile: jest.fn(() => true),
-	getRulesProfile: jest.fn(() => ({}))
-}));
+	return mocks;
+}
 
-jest.mock('../../../../../src/utils/profiles.js', () => ({
-	runInteractiveProfilesSetup: jest.fn(() => Promise.resolve(['cursor'])),
-	generateProfileSummary: jest.fn(() => 'Profile summary'),
-	categorizeProfileResults: jest.fn(() => ({ added: [], skipped: [] })),
-	generateProfileRemovalSummary: jest.fn(() => 'Removal summary'),
-	categorizeRemovalResults: jest.fn(() => ({ removed: [], skipped: [] }))
-}));
+/**
+ * Sets up mocks based on configuration
+ */
+function setupMocks(config = mockConfig) {
+	const mocks = createMockFactory(config);
 
-// Mock task-manager submodules
-jest.mock('../../../../../scripts/modules/task-manager/models.js', () => ({
-	getModelConfiguration: jest.fn(() => ({
-		success: true,
-		data: { activeModels: {} }
-	})),
-	getAvailableModelsList: jest.fn(() => []),
-	setModel: jest.fn(() => ({ success: true })),
-	getApiKeyStatusReport: jest.fn(() => ({ success: true, data: {} }))
-}));
+	// Only mock the modules that are actually used in cross-tag move functionality
+	if (config.core?.moveTasksBetweenTags) {
+		jest.mock(
+			'../../../../../scripts/modules/task-manager/move-task.js',
+			() => ({
+				moveTasksBetweenTags: mocks.moveTasksBetweenTags
+			})
+		);
+	}
 
-jest.mock('../../../../../scripts/modules/sync-readme.js', () => ({
-	syncTasksToReadme: jest.fn(() => ({ success: true }))
-}));
+	if (
+		config.core?.generateTaskFiles ||
+		config.core?.readJSON ||
+		config.core?.findProjectRoot
+	) {
+		jest.mock('../../../../../scripts/modules/utils.js', () => ({
+			findProjectRoot: mocks.findProjectRoot,
+			generateTaskFiles: mocks.generateTaskFiles,
+			readJSON: mocks.readJSON,
+			// Minimal set of utils that might be used
+			log: jest.fn(),
+			writeJSON: jest.fn(),
+			getCurrentTag: jest.fn(() => 'master')
+		}));
+	}
 
-// Mock task-master.js
-jest.mock('../../../../../src/task-master.js', () => ({
-	initTaskMaster: mockInitTaskMaster
-}));
+	if (config.core?.initTaskMaster) {
+		jest.mock('../../../../../scripts/modules/config-manager.js', () => ({
+			initTaskMaster: mocks.initTaskMaster,
+			isApiKeySet: jest.fn(() => true),
+			getConfig: jest.fn(() => ({}))
+		}));
+	}
 
-// Mock ui.js
-jest.mock('../../../../../scripts/modules/ui.js', () => ({
-	displayBanner: jest.fn(),
-	displayHelp: jest.fn()
-}));
+	// Mock chalk for consistent output testing
+	jest.mock('chalk', () => ({
+		red: jest.fn((text) => text),
+		blue: jest.fn((text) => text),
+		green: jest.fn((text) => text),
+		yellow: jest.fn((text) => text),
+		white: jest.fn((text) => ({
+			bold: jest.fn((text) => text)
+		})),
+		reset: jest.fn((text) => text)
+	}));
 
-// Mock external libraries
-jest.mock('chalk', () => ({
-	red: jest.fn((text) => text),
-	blue: jest.fn((text) => text),
-	green: jest.fn((text) => text),
-	yellow: jest.fn((text) => text),
-	white: jest.fn((text) => ({
-		bold: jest.fn((text) => text)
-	})),
-	reset: jest.fn((text) => text)
-}));
+	return mocks;
+}
 
-jest.mock('boxen', () => jest.fn((text) => text));
+// ============================================================================
+// TEST SETUP
+// ============================================================================
 
-jest.mock('ora', () =>
-	jest.fn(() => ({
-		start: jest.fn(),
-		stop: jest.fn(),
-		succeed: jest.fn(),
-		fail: jest.fn()
-	}))
-);
-
-jest.mock('inquirer', () => ({
-	prompt: jest.fn()
-}));
-
-jest.mock('@inquirer/search', () => jest.fn());
-
-// Mock fs and path
-jest.mock('fs', () => ({
-	existsSync: jest.fn(() => true),
-	readFileSync: jest.fn(),
-	writeFileSync: jest.fn(),
-	mkdirSync: jest.fn(),
-	statSync: jest.fn(() => ({ isDirectory: () => true }))
-}));
-
-jest.mock('path', () => ({
-	join: jest.fn((...args) => args.join('/')),
-	dirname: jest.fn((path) => path.split('/').slice(0, -1).join('/')),
-	resolve: jest.fn((...args) => args.join('/'))
-}));
+// Set up mocks with default configuration
+const mocks = setupMocks();
 
 // Import the actual command handler functions
 import { registerCommands } from '../../../../../scripts/modules/commands.js';
@@ -252,7 +154,7 @@ async function handleCrossTagMove(moveContext, options) {
 		ignoreDependencies: options.ignoreDependencies || false
 	};
 
-	const result = await mockMoveTasksBetweenTags(
+	const result = await mocks.moveTasksBetweenTags(
 		taskMaster.getTasksPath(),
 		sourceIds,
 		sourceTag,
@@ -262,7 +164,7 @@ async function handleCrossTagMove(moveContext, options) {
 	);
 
 	// Check if source tag still contains tasks before regenerating files
-	const tasksData = mockReadJSON(
+	const tasksData = mocks.readJSON(
 		taskMaster.getTasksPath(),
 		taskMaster.getProjectRoot(),
 		sourceTag
@@ -271,14 +173,14 @@ async function handleCrossTagMove(moveContext, options) {
 		tasksData && Array.isArray(tasksData.tasks) && tasksData.tasks.length > 0;
 
 	// Generate task files for the affected tags
-	await mockGenerateTaskFiles(taskMaster.getTasksPath(), 'tasks', {
+	await mocks.generateTaskFiles(taskMaster.getTasksPath(), 'tasks', {
 		tag: toTag,
 		projectRoot: taskMaster.getProjectRoot()
 	});
 
 	// Only regenerate source tag files if it still contains tasks
 	if (sourceTagHasTasks) {
-		await mockGenerateTaskFiles(taskMaster.getTasksPath(), 'tasks', {
+		await mocks.generateTaskFiles(taskMaster.getTasksPath(), 'tasks', {
 			tag: sourceTag,
 			projectRoot: taskMaster.getProjectRoot()
 		});
@@ -286,6 +188,10 @@ async function handleCrossTagMove(moveContext, options) {
 
 	return result;
 }
+
+// ============================================================================
+// TEST SUITE
+// ============================================================================
 
 describe('CLI Move Command Cross-Tag Functionality', () => {
 	let mockTaskMaster;
@@ -308,10 +214,10 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 			getProjectRoot: jest.fn().mockReturnValue('/test/project')
 		};
 
-		mockInitTaskMaster.mockReturnValue(mockTaskMaster);
-		mockFindProjectRoot.mockReturnValue('/test/project');
-		mockGenerateTaskFiles.mockResolvedValue();
-		mockReadJSON.mockReturnValue({
+		mocks.initTaskMaster.mockReturnValue(mockTaskMaster);
+		mocks.findProjectRoot.mockReturnValue('/test/project');
+		mocks.generateTaskFiles.mockResolvedValue();
+		mocks.readJSON.mockReturnValue({
 			tasks: [
 				{ id: 1, title: 'Test Task 1' },
 				{ id: 2, title: 'Test Task 2' }
@@ -340,13 +246,13 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				taskMaster: mockTaskMaster
 			};
 
-			mockMoveTasksBetweenTags.mockResolvedValue({
+			mocks.moveTasksBetweenTags.mockResolvedValue({
 				message: 'Successfully moved 1 tasks from "backlog" to "in-progress"'
 			});
 
 			await handleCrossTagMove(moveContext, options);
 
-			expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
+			expect(mocks.moveTasksBetweenTags).toHaveBeenCalledWith(
 				'/test/path/tasks.json',
 				['1'],
 				'backlog',
@@ -375,13 +281,13 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				taskMaster: mockTaskMaster
 			};
 
-			mockMoveTasksBetweenTags.mockResolvedValue({
+			mocks.moveTasksBetweenTags.mockResolvedValue({
 				message: 'Successfully moved 2 tasks from "backlog" to "in-progress"'
 			});
 
 			await handleCrossTagMove(moveContext, options);
 
-			expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
+			expect(mocks.moveTasksBetweenTags).toHaveBeenCalledWith(
 				'/test/path/tasks.json',
 				['1'],
 				'backlog',
@@ -410,13 +316,13 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				taskMaster: mockTaskMaster
 			};
 
-			mockMoveTasksBetweenTags.mockResolvedValue({
+			mocks.moveTasksBetweenTags.mockResolvedValue({
 				message: 'Successfully moved 1 tasks from "backlog" to "in-progress"'
 			});
 
 			await handleCrossTagMove(moveContext, options);
 
-			expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
+			expect(mocks.moveTasksBetweenTags).toHaveBeenCalledWith(
 				'/test/path/tasks.json',
 				['1'],
 				'backlog',
@@ -491,13 +397,13 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				taskMaster: mockTaskMaster
 			};
 
-			mockMoveTasksBetweenTags.mockResolvedValue({
+			mocks.moveTasksBetweenTags.mockResolvedValue({
 				message: 'Successfully moved 1 tasks from "master" to "in-progress"'
 			});
 
 			await handleCrossTagMove(moveContext, options);
 
-			expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
+			expect(mocks.moveTasksBetweenTags).toHaveBeenCalledWith(
 				'/test/path/tasks.json',
 				['1'],
 				'master',
@@ -523,13 +429,13 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				taskMaster: mockTaskMaster
 			};
 
-			mockMoveTasksBetweenTags.mockResolvedValue({
+			mocks.moveTasksBetweenTags.mockResolvedValue({
 				message: 'Successfully moved 3 tasks from "backlog" to "in-progress"'
 			});
 
 			await handleCrossTagMove(moveContext, options);
 
-			expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
+			expect(mocks.moveTasksBetweenTags).toHaveBeenCalledWith(
 				'/test/path/tasks.json',
 				['1', '2', '3'],
 				'backlog',
@@ -553,13 +459,13 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				taskMaster: mockTaskMaster
 			};
 
-			mockMoveTasksBetweenTags.mockResolvedValue({
+			mocks.moveTasksBetweenTags.mockResolvedValue({
 				message: 'Successfully moved 3 tasks from "backlog" to "in-progress"'
 			});
 
 			await handleCrossTagMove(moveContext, options);
 
-			expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
+			expect(mocks.moveTasksBetweenTags).toHaveBeenCalledWith(
 				'/test/path/tasks.json',
 				['1', '2', '3'],
 				'backlog',
@@ -567,6 +473,40 @@ describe('CLI Move Command Cross-Tag Functionality', () => {
 				expect.any(Object),
 				{ projectRoot: '/test/project' }
 			);
+		});
+	});
+
+	describe('Mock Configuration Tests', () => {
+		it('should work with minimal mock configuration', async () => {
+			// Test that the mock factory works with minimal config
+			const minimalConfig = {
+				core: {
+					moveTasksBetweenTags: true,
+					generateTaskFiles: true,
+					readJSON: true
+				}
+			};
+
+			const minimalMocks = createMockFactory(minimalConfig);
+			expect(minimalMocks.moveTasksBetweenTags).toBeDefined();
+			expect(minimalMocks.generateTaskFiles).toBeDefined();
+			expect(minimalMocks.readJSON).toBeDefined();
+		});
+
+		it('should allow disabling specific mocks', async () => {
+			// Test that mocks can be selectively disabled
+			const selectiveConfig = {
+				core: {
+					moveTasksBetweenTags: true,
+					generateTaskFiles: false, // Disabled
+					readJSON: true
+				}
+			};
+
+			const selectiveMocks = createMockFactory(selectiveConfig);
+			expect(selectiveMocks.moveTasksBetweenTags).toBeDefined();
+			expect(selectiveMocks.generateTaskFiles).toBeUndefined();
+			expect(selectiveMocks.readJSON).toBeDefined();
 		});
 	});
 });
