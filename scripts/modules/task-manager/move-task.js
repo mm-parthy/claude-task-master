@@ -587,27 +587,15 @@ function getAllTasksWithTags(rawData) {
 }
 
 /**
- * Move tasks between different tags with dependency handling
+ * Validate move operation parameters and data
  * @param {string} tasksPath - Path to tasks.json file
  * @param {Array} taskIds - Array of task IDs to move
  * @param {string} sourceTag - Source tag name
  * @param {string} targetTag - Target tag name
- * @param {Object} options - Move options
- * @param {boolean} options.withDependencies - Move dependent tasks along with main task
- * @param {boolean} options.ignoreDependencies - Break cross-tag dependencies during move
-
- * @param {Object} context - Context object containing projectRoot and tag information
- * @returns {Object} Result object with moved task details
+ * @param {Object} context - Context object
+ * @returns {Object} Validation result with rawData and sourceTasks
  */
-async function moveTasksBetweenTags(
-	tasksPath,
-	taskIds,
-	sourceTag,
-	targetTag,
-	options = {},
-	context = {}
-) {
-	const { withDependencies = false, ignoreDependencies = false } = options;
+async function validateMove(tasksPath, taskIds, sourceTag, targetTag, context) {
 	const { projectRoot } = context;
 
 	// Read the raw data without tag resolution to preserve tagged structure
@@ -618,7 +606,7 @@ async function moveTasksBetweenTags(
 		rawData = rawData._rawTaggedData;
 	}
 
-	// Validate source and target tags exist
+	// Validate source tag exists
 	if (
 		!rawData ||
 		!rawData[sourceTag] ||
@@ -630,14 +618,11 @@ async function moveTasksBetweenTags(
 		);
 	}
 
+	// Create target tag if it doesn't exist
 	if (!rawData[targetTag]) {
-		// Create target tag if it doesn't exist
 		rawData[targetTag] = { tasks: [] };
 		log('info', `Created new tag "${targetTag}"`);
 	}
-
-	// Get all tasks for validation
-	const allTasks = getAllTasksWithTags(rawData);
 
 	// Normalize all IDs to strings once for consistent comparison
 	const normalizedSearchIds = taskIds.map((id) => String(id));
@@ -652,8 +637,42 @@ async function moveTasksBetweenTags(
 		validateSubtaskMove(taskId, sourceTag, targetTag);
 	});
 
-	// Note: Circular dependency checks are not needed here because the dependency-manager
-	// already prevents circular dependencies during task creation and dependency addition
+	return { rawData, sourceTasks };
+}
+
+/**
+ * Load and prepare task data for move operation
+ * @param {Object} validation - Validation result from validateMove
+ * @returns {Object} Prepared data with rawData, sourceTasks, and allTasks
+ */
+async function prepareTaskData(validation) {
+	const { rawData, sourceTasks } = validation;
+
+	// Get all tasks for validation
+	const allTasks = getAllTasksWithTags(rawData);
+
+	return { rawData, sourceTasks, allTasks };
+}
+
+/**
+ * Resolve dependencies and determine tasks to move
+ * @param {Array} sourceTasks - Source tasks to move
+ * @param {Array} allTasks - All available tasks from all tags
+ * @param {Object} options - Move options
+ * @param {Array} taskIds - Original task IDs
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @returns {Object} Tasks to move and dependency resolution info
+ */
+async function resolveDependencies(
+	sourceTasks,
+	allTasks,
+	options,
+	taskIds,
+	sourceTag,
+	targetTag
+) {
+	const { withDependencies = false, ignoreDependencies = false } = options;
 
 	// Handle --with-dependencies flag first (regardless of cross-tag dependencies)
 	if (withDependencies) {
@@ -670,14 +689,14 @@ async function moveTasksBetweenTags(
 			'info',
 			`Moving ${allTaskIdsToMove.length} tasks (including dependencies): ${allTaskIdsToMove.join(', ')}`
 		);
-		return performCrossTagMove(
-			allTaskIdsToMove,
-			sourceTag,
-			targetTag,
-			rawData,
-			context,
-			tasksPath
-		);
+
+		return {
+			tasksToMove: allTaskIdsToMove,
+			dependencyResolution: {
+				type: 'with-dependencies',
+				dependentTasks: allDependentTaskIds
+			}
+		};
 	}
 
 	// Find cross-tag dependencies (these shouldn't exist since dependencies are only within tags)
@@ -715,6 +734,14 @@ async function moveTasksBetweenTags(
 				'warn',
 				`Removed ${crossTagDependencies.length} cross-tag dependencies`
 			);
+
+			return {
+				tasksToMove: taskIds,
+				dependencyResolution: {
+					type: 'ignored-dependencies',
+					conflicts: crossTagDependencies
+				}
+			};
 		} else {
 			// Block move and show error
 			throw new MoveTaskError(
@@ -730,29 +757,24 @@ async function moveTasksBetweenTags(
 		}
 	}
 
-	// Proceed with move
-	return performCrossTagMove(
-		taskIds,
-		sourceTag,
-		targetTag,
-		rawData,
-		context,
-		tasksPath
-	);
+	return {
+		tasksToMove: taskIds,
+		dependencyResolution: { type: 'no-conflicts' }
+	};
 }
 
 /**
- * Perform the actual cross-tag move operation
- * @param {Array} taskIds - Array of task IDs to move
+ * Execute the actual move operation
+ * @param {Array} tasksToMove - Array of task IDs to move
  * @param {string} sourceTag - Source tag name
  * @param {string} targetTag - Target tag name
  * @param {Object} rawData - Raw data object
  * @param {Object} context - Context object
  * @param {string} tasksPath - Path to tasks.json file
- * @returns {Object} Result object with moved task details
+ * @returns {Object} Move operation result
  */
-function performCrossTagMove(
-	taskIds,
+async function executeMoveOperation(
+	tasksToMove,
 	sourceTag,
 	targetTag,
 	rawData,
@@ -763,7 +785,7 @@ function performCrossTagMove(
 	const movedTasks = [];
 
 	// Move each task from source to target tag
-	taskIds.forEach((taskId) => {
+	tasksToMove.forEach((taskId) => {
 		// Normalize taskId to number for comparison
 		const normalizedTaskId =
 			typeof taskId === 'string' ? parseInt(taskId, 10) : taskId;
@@ -812,6 +834,28 @@ function performCrossTagMove(
 		log('info', `Moved task ${taskId} from "${sourceTag}" to "${targetTag}"`);
 	});
 
+	return { rawData, movedTasks };
+}
+
+/**
+ * Finalize the move operation by saving data and returning result
+ * @param {Object} moveResult - Result from executeMoveOperation
+ * @param {string} tasksPath - Path to tasks.json file
+ * @param {Object} context - Context object
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @returns {Object} Final result object
+ */
+async function finalizeMove(
+	moveResult,
+	tasksPath,
+	context,
+	sourceTag,
+	targetTag
+) {
+	const { projectRoot } = context;
+	const { rawData, movedTasks } = moveResult;
+
 	// Write the updated data
 	writeJSON(tasksPath, rawData, projectRoot, null);
 
@@ -819,6 +863,68 @@ function performCrossTagMove(
 		message: `Successfully moved ${movedTasks.length} tasks from "${sourceTag}" to "${targetTag}"`,
 		movedTasks
 	};
+}
+
+/**
+ * Move tasks between different tags with dependency handling
+ * @param {string} tasksPath - Path to tasks.json file
+ * @param {Array} taskIds - Array of task IDs to move
+ * @param {string} sourceTag - Source tag name
+ * @param {string} targetTag - Target tag name
+ * @param {Object} options - Move options
+ * @param {boolean} options.withDependencies - Move dependent tasks along with main task
+ * @param {boolean} options.ignoreDependencies - Break cross-tag dependencies during move
+ * @param {Object} context - Context object containing projectRoot and tag information
+ * @returns {Object} Result object with moved task details
+ */
+async function moveTasksBetweenTags(
+	tasksPath,
+	taskIds,
+	sourceTag,
+	targetTag,
+	options = {},
+	context = {}
+) {
+	// 1. Validation phase
+	const validation = await validateMove(
+		tasksPath,
+		taskIds,
+		sourceTag,
+		targetTag,
+		context
+	);
+
+	// 2. Load and prepare data
+	const { rawData, sourceTasks, allTasks } = await prepareTaskData(validation);
+
+	// 3. Handle dependencies
+	const { tasksToMove } = await resolveDependencies(
+		sourceTasks,
+		allTasks,
+		options,
+		taskIds,
+		sourceTag,
+		targetTag
+	);
+
+	// 4. Execute move
+	const moveResult = await executeMoveOperation(
+		tasksToMove,
+		sourceTag,
+		targetTag,
+		rawData,
+		context,
+		tasksPath
+	);
+
+	// 5. Save and return
+	return await finalizeMove(
+		moveResult,
+		tasksPath,
+		context,
+		sourceTag,
+		targetTag
+	);
 }
 
 /**
