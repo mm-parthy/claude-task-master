@@ -133,10 +133,9 @@ describe('Cross-Tag Task Movement Simple Integration Tests', () => {
 			expect(taskInProgress.status).toBe('pending');
 		});
 
-		it('should handle dependency conflicts during cross-tag moves', async () => {
+		it.skip('should handle dependency conflicts during cross-tag moves', async () => {
 			// For now, skip this test as the mock setup is not working correctly
 			// TODO: Fix mock-fs setup for complex dependency scenarios
-			expect(true).toBe(true); // Placeholder test
 		});
 
 		it('should handle subtask movement restrictions', async () => {
@@ -225,10 +224,9 @@ describe('Cross-Tag Task Movement Simple Integration Tests', () => {
 			).rejects.toThrow();
 		});
 
-		it('should handle withDependencies option correctly', async () => {
+		it.skip('should handle withDependencies option correctly', async () => {
 			// For now, skip this test as the mock setup is not working correctly
 			// TODO: Fix mock-fs setup for complex dependency scenarios
-			expect(true).toBe(true); // Placeholder test
 		});
 
 		it('should handle ignoreDependencies option correctly', async () => {
