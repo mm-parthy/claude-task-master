@@ -4885,7 +4885,9 @@ Examples:
 					}
 
 					// Get current git branch
-					const currentBranch = await gitUtils.getCurrentBranch(context.projectRoot);
+					const currentBranch = await gitUtils.getCurrentBranch(
+						context.projectRoot
+					);
 					if (!currentBranch) {
 						console.error(
 							chalk.red('Error: Could not determine current git branch.')
