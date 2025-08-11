@@ -4875,7 +4875,7 @@ Examples:
 					const gitUtils = await import('./utils/git-utils.js');
 
 					// Check if we're in a git repository
-					if (!(await gitUtils.isGitRepository(projectRoot))) {
+					if (!(await gitUtils.isGitRepository(context.projectRoot))) {
 						console.error(
 							chalk.red(
 								'Error: Not in a git repository. Cannot use --from-branch option.'
@@ -4885,7 +4885,7 @@ Examples:
 					}
 
 					// Get current git branch
-					const currentBranch = await gitUtils.getCurrentBranch(projectRoot);
+					const currentBranch = await gitUtils.getCurrentBranch(context.projectRoot);
 					if (!currentBranch) {
 						console.error(
 							chalk.red('Error: Could not determine current git branch.')
