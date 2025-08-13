@@ -233,7 +233,7 @@ describe('Cross-Tag Task Movement', () => {
 			mockContext
 		);
 
-		// Write should include backlog:2 moved, but must NOT attempt to move in-progress:2
+		// Write should include backlog:2 moved, and must NOT traverse or fetch dependencies from the target tag
 		expect(writeJSON).toHaveBeenCalledWith(
 			mockTasksPath,
 			expect.objectContaining({
