@@ -4181,12 +4181,6 @@ Examples:
 					result.tips.forEach((t) => console.log(chalk.white(`  • ${t}`)));
 				}
 
-				// Print any tips returned from the move operation (e.g., after ignoring dependencies)
-				if (Array.isArray(result.tips) && result.tips.length > 0) {
-					console.log('\n' + chalk.yellow.bold('Next Steps:'));
-					result.tips.forEach((t) => console.log(chalk.white(`  • ${t}`)));
-				}
-
 				// Check if source tag still contains tasks before regenerating files
 				const tasksData = readJSON(
 					taskMaster.getTasksPath(),
