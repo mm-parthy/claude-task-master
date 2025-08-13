@@ -872,11 +872,12 @@ async function executeMoveOperation(
  * @returns {Object} Final result object
  */
 async function finalizeMove(
-	moveResult,
-	tasksPath,
-	context,
-	sourceTag,
-	targetTag
+    moveResult,
+    tasksPath,
+    context,
+    sourceTag,
+    targetTag,
+    dependencyResolution
 ) {
 	const { projectRoot } = context;
 	const { rawData, movedTasks } = moveResult;
@@ -884,10 +885,20 @@ async function finalizeMove(
 	// Write the updated data
 	writeJSON(tasksPath, rawData, projectRoot, null);
 
-	return {
-		message: `Successfully moved ${movedTasks.length} tasks from "${sourceTag}" to "${targetTag}"`,
-		movedTasks
-	};
+    const response = {
+        message: `Successfully moved ${movedTasks.length} tasks from "${sourceTag}" to "${targetTag}"`,
+        movedTasks
+    };
+
+    // If we intentionally broke cross-tag dependencies, provide tips to validate & fix
+    if (dependencyResolution && dependencyResolution.type === 'ignored-dependencies') {
+        response.tips = [
+            'Run "task-master validate-dependencies" to check for dependency issues.',
+            'Run "task-master fix-dependencies" to automatically repair dangling dependencies.'
+        ];
+    }
+
+    return response;
 }
 
 /**
@@ -923,7 +934,7 @@ async function moveTasksBetweenTags(
 	const { rawData, sourceTasks, allTasks } = await prepareTaskData(validation);
 
 	// 3. Handle dependencies
-	const { tasksToMove } = await resolveDependencies(
+    const { tasksToMove, dependencyResolution } = await resolveDependencies(
 		sourceTasks,
 		allTasks,
 		options,
@@ -943,13 +954,14 @@ async function moveTasksBetweenTags(
 	);
 
 	// 5. Save and return
-	return await finalizeMove(
-		moveResult,
-		tasksPath,
-		context,
-		sourceTag,
-		targetTag
-	);
+    return await finalizeMove(
+        moveResult,
+        tasksPath,
+        context,
+        sourceTag,
+        targetTag,
+        dependencyResolution
+    );
 }
 
 /**

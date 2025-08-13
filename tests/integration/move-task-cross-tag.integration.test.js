@@ -390,7 +390,7 @@ describe('Cross-Tag Task Movement Integration Tests', () => {
 			const sourceTag = 'backlog';
 			const targetTag = 'in-progress';
 
-			const result = await moveTasksBetweenTags(
+            const result = await moveTasksBetweenTags(
 				testDataPath,
 				taskIds,
 				sourceTag,
@@ -401,7 +401,7 @@ describe('Cross-Tag Task Movement Integration Tests', () => {
 
 			// Since dependencies only exist within tags, there are no cross-tag conflicts to ignore
 			// Task 2 moves with its dependencies intact
-			expect(mockUtils.writeJSON).toHaveBeenCalledWith(
+            expect(mockUtils.writeJSON).toHaveBeenCalledWith(
 				testDataPath,
 				expect.objectContaining({
 					backlog: expect.objectContaining({
@@ -424,7 +424,34 @@ describe('Cross-Tag Task Movement Integration Tests', () => {
 				'/test/project',
 				null
 			);
-		});
+
+        });
+
+        it('should provide advisory tips when ignoreDependencies breaks deps', async () => {
+            // Move a task that has dependencies so cross-tag conflicts would be broken
+            const taskIds = [2]; // backlog:2 depends on 1
+            const sourceTag = 'backlog';
+            const targetTag = 'in-progress';
+
+            // Override cross-tag detection to simulate conflicts for this case
+            const depManager = await import('../../scripts/modules/dependency-manager.js');
+            depManager.findCrossTagDependencies.mockReturnValueOnce([
+                { taskId: 2, dependencyId: 1, dependencyTag: sourceTag }
+            ]);
+
+            const result = await moveTasksBetweenTags(
+                testDataPath,
+                taskIds,
+                sourceTag,
+                targetTag,
+                { ignoreDependencies: true },
+                { projectRoot: '/test/project' }
+            );
+
+            expect(result.tips).toBeDefined();
+            expect(result.tips.join(' ')).toContain('validate-dependencies');
+            expect(result.tips.join(' ')).toContain('fix-dependencies');
+        });
 
 		it('should move task without cross-tag dependency conflicts (since dependencies only exist within tags)', async () => {
 			const taskIds = [2]; // Task 2 depends on Task 1 (both in same tag)
