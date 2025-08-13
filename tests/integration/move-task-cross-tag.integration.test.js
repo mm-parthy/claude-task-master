@@ -449,9 +449,13 @@ describe('Cross-Tag Task Movement Integration Tests', () => {
 				{ projectRoot: '/test/project' }
 			);
 
-			expect(result.tips).toBeDefined();
-			expect(result.tips.join(' ')).toContain('validate-dependencies');
-			expect(result.tips.join(' ')).toContain('fix-dependencies');
+			expect(Array.isArray(result.tips)).toBe(true);
+			const expectedTips = [
+				'Run "task-master validate-dependencies" to check for dependency issues.',
+				'Run "task-master fix-dependencies" to automatically repair dangling dependencies.'
+			];
+			expect(result.tips).toHaveLength(expectedTips.length);
+			expect(result.tips).toEqual(expect.arrayContaining(expectedTips));
 		});
 
 		it('should move task without cross-tag dependency conflicts (since dependencies only exist within tags)', async () => {
