@@ -591,6 +591,25 @@ describe('Cross-Tag Task Movement Integration Tests', () => {
 					{ projectRoot: '/test/project' }
 				)
 			).rejects.toThrow('Task 1 already exists in target tag "in-progress"');
+
+			// Validate suggestions on the error payload
+			try {
+				await moveTasksBetweenTags(
+					testDataPath,
+					taskIds,
+					sourceTag,
+					targetTag,
+					{},
+					{ projectRoot: '/test/project' }
+				);
+			} catch (err) {
+				expect(err.code).toBe('TASK_ALREADY_EXISTS');
+				expect(Array.isArray(err.data?.suggestions)).toBe(true);
+				const s = (err.data?.suggestions || []).join(' ');
+				expect(s).toContain('different target tag');
+				expect(s).toContain('different set of IDs');
+				expect(s).toContain('within-tag');
+			}
 		});
 	});
 

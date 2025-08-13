@@ -158,7 +158,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 			);
 
 			try {
-				await moveTaskModule.moveTasksBetweenTags(
+				const result = await moveTaskModule.moveTasksBetweenTags(
 					tasksPath,
 					taskIds,
 					sourceTag,
@@ -170,6 +170,12 @@ describe('Cross-Tag Move CLI Integration', () => {
 				);
 
 				console.log(chalk.green('Successfully moved task(s) between tags'));
+
+				// Print advisory tips when present
+				if (result && Array.isArray(result.tips) && result.tips.length > 0) {
+					console.log('Next Steps:');
+					result.tips.forEach((t) => console.log(`  • ${t}`));
+				}
 
 				// Generate task files for both tags
 				await generateTaskFilesModule.default(
@@ -184,6 +190,19 @@ describe('Cross-Tag Move CLI Integration', () => {
 				);
 			} catch (error) {
 				console.error(chalk.red(`Error: ${error.message}`));
+				// Print ID collision guidance similar to CLI help block
+				if (
+					typeof error?.message === 'string' &&
+					error.message.includes('already exists in target tag')
+				) {
+					console.log('');
+					console.log('Conflict: ID already exists in target tag');
+					console.log('  • Choose a different target tag without conflicting IDs');
+					console.log('  • Move a different set of IDs (avoid existing ones)');
+					console.log(
+						'  • If needed, move within-tag to a new ID first, then cross-tag move'
+					);
+				}
 				throw error;
 			}
 		} else {
@@ -433,6 +452,55 @@ describe('Cross-Tag Move CLI Integration', () => {
 		).toBe(true);
 
 		restore();
+	});
+
+	it('should print advisory tips when result.tips are returned (ignore-dependencies)', async () => {
+		const { errorMessages, logMessages, restore } = captureConsoleAndExit();
+		try {
+			// Arrange: mock move to return tips
+			mockMoveTasksBetweenTags.mockResolvedValue({
+				message: 'ok',
+				tips: [
+					'Run "task-master validate-dependencies" to check for dependency issues.',
+					'Run "task-master fix-dependencies" to automatically repair dangling dependencies.'
+				]
+			});
+
+			await moveAction({
+				from: '2',
+				fromTag: 'backlog',
+				toTag: 'in-progress',
+				ignoreDependencies: true
+			});
+
+			const joined = logMessages.join('\n');
+			expect(joined).toContain('Next Steps');
+			expect(joined).toContain('validate-dependencies');
+			expect(joined).toContain('fix-dependencies');
+		} finally {
+			restore();
+		}
+	});
+
+	it('should print ID collision suggestions when target already has the ID', async () => {
+		const { errorMessages, logMessages, restore } = captureConsoleAndExit();
+		try {
+			// Arrange: mock move to throw collision
+			const err = new Error('Task 1 already exists in target tag "in-progress"');
+			mockMoveTasksBetweenTags.mockRejectedValue(err);
+
+			await expect(
+				moveAction({ from: '1', fromTag: 'backlog', toTag: 'in-progress' })
+			).rejects.toThrow('already exists in target tag');
+
+			const joined = logMessages.join('\n');
+			expect(joined).toContain('Conflict: ID already exists in target tag');
+			expect(joined).toContain('different target tag');
+			expect(joined).toContain('different set of IDs');
+			expect(joined).toContain('within-tag');
+		} finally {
+			restore();
+		}
 	});
 
 	it('should handle same tag error correctly', async () => {
