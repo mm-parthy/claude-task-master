@@ -835,7 +835,16 @@ async function executeMoveOperation(
 		if (existingTaskIndex !== -1) {
 			throw new MoveTaskError(
 				MOVE_ERROR_CODES.TASK_ALREADY_EXISTS,
-				`Task ${taskId} already exists in target tag "${targetTag}"`
+				`Task ${taskId} already exists in target tag "${targetTag}"`,
+				{
+					conflictingId: normalizedTaskId,
+					targetTag,
+					suggestions: [
+						'Choose a different target tag without conflicting IDs',
+						'Move a different set of IDs (avoid existing ones)',
+						'If needed, move within-tag to a new ID first, then cross-tag move'
+					]
+				}
 			);
 		}
 

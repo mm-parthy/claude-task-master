@@ -89,6 +89,34 @@ describe('MCP Cross-Tag Move Direct Function - options & suggestions', () => {
     expect(s).toContain('validate-dependencies');
     expect(s).toContain('Move dependencies first');
   });
+
+  it('returns ID collision suggestions when target tag already has the ID', async () => {
+    // Arrange: core throws TASK_ALREADY_EXISTS structured error
+    mockMoveTasksBetweenTags.mockImplementation(() => {
+      const err = new Error('Task 1 already exists in target tag "in-progress"');
+      err.code = 'TASK_ALREADY_EXISTS';
+      throw err;
+    });
+
+    // Act
+    const result = await moveTaskCrossTagDirect(
+      {
+        sourceIds: '1',
+        sourceTag: 'backlog',
+        targetTag: 'in-progress',
+        projectRoot: '/test'
+      },
+      mockLog
+    );
+
+    // Assert
+    expect(result.success).toBe(false);
+    expect(result.error.code).toBe('TASK_ALREADY_EXISTS');
+    const joined = (result.error.suggestions || []).join(' ');
+    expect(joined).toContain('different target tag');
+    expect(joined).toContain('different set of IDs');
+    expect(joined).toContain('within-tag');
+  });
 });
 
 
