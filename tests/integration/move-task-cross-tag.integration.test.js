@@ -637,37 +637,7 @@ describe('Cross-Tag Task Movement Integration Tests', () => {
 			);
 		});
 
-		it('should handle force flag for dependency conflicts', async () => {
-			const taskIds = [2]; // Task 2 depends on Task 1
-			const sourceTag = 'backlog';
-			const targetTag = 'in-progress';
-
-			const result = await moveTasksBetweenTags(
-				testDataPath,
-				taskIds,
-				sourceTag,
-				targetTag,
-				{ force: true },
-				{ projectRoot: '/test/project' }
-			);
-
-			// Verify task was moved despite dependency conflicts
-			expect(mockUtils.writeJSON).toHaveBeenCalledWith(
-				testDataPath,
-				expect.objectContaining({
-					'in-progress': expect.objectContaining({
-						tasks: expect.arrayContaining([
-							expect.objectContaining({
-								id: 2,
-								tag: 'in-progress'
-							})
-						])
-					})
-				}),
-				'/test/project',
-				null
-			);
-		});
+		// Note: force flag deprecated for cross-tag moves; covered by with/ignore dependencies tests
 	});
 
 	describe('Complex Scenarios', () => {

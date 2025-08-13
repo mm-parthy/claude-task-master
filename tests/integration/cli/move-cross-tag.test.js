@@ -165,8 +165,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 					toTag,
 					{
 						withDependencies,
-						ignoreDependencies,
-						force
+						ignoreDependencies
 					}
 				);
 
@@ -268,8 +267,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 			'in-progress',
 			{
 				withDependencies: undefined,
-				ignoreDependencies: undefined,
-				force: undefined
+				ignoreDependencies: undefined
 			}
 		);
 	});
@@ -323,8 +321,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 			'in-progress',
 			{
 				withDependencies: true,
-				ignoreDependencies: undefined,
-				force: undefined
+				ignoreDependencies: undefined
 			}
 		);
 	});
@@ -350,8 +347,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 			'in-progress',
 			{
 				withDependencies: undefined,
-				ignoreDependencies: true,
-				force: undefined
+				ignoreDependencies: true
 			}
 		);
 	});
@@ -376,8 +372,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 			'new-tag',
 			{
 				withDependencies: undefined,
-				ignoreDependencies: undefined,
-				force: undefined
+				ignoreDependencies: undefined
 			}
 		);
 	});
@@ -485,8 +480,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 			from: '1',
 			toTag: 'in-progress',
 			withDependencies: false,
-			ignoreDependencies: false,
-			force: false
+			ignoreDependencies: false
 			// fromTag is intentionally not provided to test fallback
 		});
 
@@ -498,8 +492,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 			'in-progress',
 			{
 				withDependencies: false,
-				ignoreDependencies: false,
-				force: false
+				ignoreDependencies: false
 			}
 		);
 
@@ -536,8 +529,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 			'in-progress',
 			{
 				withDependencies: undefined,
-				ignoreDependencies: undefined,
-				force: undefined
+				ignoreDependencies: undefined
 			}
 		);
 
@@ -555,32 +547,7 @@ describe('Cross-Tag Move CLI Integration', () => {
 		);
 	});
 
-	it('should handle --force flag correctly', async () => {
-		// Mock successful cross-tag move with force flag
-		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
-		mockGenerateTaskFiles.mockResolvedValue(undefined);
-
-		const options = {
-			from: '1',
-			fromTag: 'backlog',
-			toTag: 'in-progress',
-			force: true
-		};
-
-		await moveAction(options);
-
-		expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
-			expect.stringContaining('tasks.json'),
-			[1],
-			'backlog',
-			'in-progress',
-			{
-				withDependencies: undefined,
-				ignoreDependencies: undefined,
-				force: true // Force flag should be passed through
-			}
-		);
-	});
+// Note: --force flag is no longer supported for cross-tag moves
 
 	it('should fail when invalid task ID is provided', async () => {
 		const options = {
@@ -662,90 +629,11 @@ describe('Cross-Tag Move CLI Integration', () => {
 		restore();
 	});
 
-	it('should combine --with-dependencies and --force flags correctly', async () => {
-		// Mock successful cross-tag move with both flags
-		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
-		mockGenerateTaskFiles.mockResolvedValue(undefined);
+// Note: --force combinations removed
 
-		const options = {
-			from: '1,2',
-			fromTag: 'backlog',
-			toTag: 'in-progress',
-			withDependencies: true,
-			force: true
-		};
+// Note: --force combinations removed
 
-		await moveAction(options);
-
-		expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
-			expect.stringContaining('tasks.json'),
-			[1, 2],
-			'backlog',
-			'in-progress',
-			{
-				withDependencies: true,
-				ignoreDependencies: undefined,
-				force: true // Both flags should be passed
-			}
-		);
-	});
-
-	it('should combine --ignore-dependencies and --force flags correctly', async () => {
-		// Mock successful cross-tag move with both flags
-		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
-		mockGenerateTaskFiles.mockResolvedValue(undefined);
-
-		const options = {
-			from: '1',
-			fromTag: 'backlog',
-			toTag: 'in-progress',
-			ignoreDependencies: true,
-			force: true
-		};
-
-		await moveAction(options);
-
-		expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
-			expect.stringContaining('tasks.json'),
-			[1],
-			'backlog',
-			'in-progress',
-			{
-				withDependencies: undefined,
-				ignoreDependencies: true,
-				force: true // Both flags should be passed
-			}
-		);
-	});
-
-	it('should handle all three flags combined correctly', async () => {
-		// Mock successful cross-tag move with all flags
-		mockMoveTasksBetweenTags.mockResolvedValue(undefined);
-		mockGenerateTaskFiles.mockResolvedValue(undefined);
-
-		const options = {
-			from: '1,2,3',
-			fromTag: 'backlog',
-			toTag: 'in-progress',
-			withDependencies: true,
-			ignoreDependencies: true,
-			force: true
-		};
-
-		await moveAction(options);
-
-		expect(mockMoveTasksBetweenTags).toHaveBeenCalledWith(
-			expect.stringContaining('tasks.json'),
-			[1, 2, 3],
-			'backlog',
-			'in-progress',
-			{
-				withDependencies: true,
-				ignoreDependencies: true,
-				force: true // All three flags should be passed
-			}
-		);
-	});
+// Note: --force combinations removed
 
 	it('should handle whitespace in comma-separated task IDs', async () => {
 		// Mock successful cross-tag move with whitespace
