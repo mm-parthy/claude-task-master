@@ -219,8 +219,8 @@ describe('Cross-Tag Task Movement', () => {
 		});
 	});
 
-	// New test: ensure with-dependencies only traverses sourceTag tasks even if IDs collide across tags
-	it('should scope dependency traversal to source tag when IDs collide across tags', async () => {
+	// New test: ensure with-dependencies only traverses tasks from the source tag
+	it('should scope dependency traversal to source tag when using --with-dependencies', async () => {
 		findCrossTagDependencies.mockReturnValue([]);
 		validateSubtaskMove.mockImplementation(() => {});
 
