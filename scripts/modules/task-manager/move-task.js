@@ -674,15 +674,32 @@ async function resolveDependencies(
 ) {
 	const { withDependencies = false, ignoreDependencies = false } = options;
 
+	// Scope allTasks to the source tag to avoid cross-tag contamination when
+	// computing dependency chains for --with-dependencies
+	const tasksInSourceTag = Array.isArray(allTasks)
+		? allTasks.filter((t) => t && t.tag === sourceTag)
+		: [];
+
 	// Handle --with-dependencies flag first (regardless of cross-tag dependencies)
 	if (withDependencies) {
 		// Move dependent tasks along with main tasks
-		// Find ALL dependencies recursively within the same tag
-		const allDependentTaskIds = findAllDependenciesRecursively(
+		// Find ALL dependencies recursively, but only using tasks from the source tag
+		const allDependentTaskIdsRaw = findAllDependenciesRecursively(
 			sourceTasks,
-			allTasks,
+			tasksInSourceTag,
 			{ maxDepth: 100, includeSelf: false }
 		);
+
+		// Filter dependent IDs to those that actually exist in the source tag
+		const sourceTagIds = new Set(
+			tasksInSourceTag.map((t) => (typeof t.id === 'string' ? parseInt(t.id, 10) : t.id))
+		);
+		const allDependentTaskIds = allDependentTaskIdsRaw.filter((depId) => {
+			// Only numeric task IDs are eligible to be moved (subtasks cannot be moved cross-tag)
+			const numericId = typeof depId === 'string' ? parseInt(depId, 10) : depId;
+			return Number.isFinite(numericId) && sourceTagIds.has(numericId);
+		});
+
 		const allTaskIdsToMove = [...new Set([...taskIds, ...allDependentTaskIds])];
 
 		log(
@@ -711,22 +728,30 @@ async function resolveDependencies(
 		if (ignoreDependencies) {
 			// Break cross-tag dependencies (edge case - shouldn't normally happen)
 			sourceTasks.forEach((task) => {
+				const sourceTagTasks = tasksInSourceTag;
+				const targetTagTasks = Array.isArray(allTasks)
+					? allTasks.filter((t) => t && t.tag === targetTag)
+					: [];
 				task.dependencies = task.dependencies.filter((depId) => {
-					// Handle both task IDs and subtask IDs (e.g., "1.2")
-					let depTask = null;
+					// Normalize to numeric parent task ID when possible
+					let parentTaskId = null;
 					if (typeof depId === 'string' && depId.includes('.')) {
-						// It's a subtask ID - extract parent task ID and find the parent task
-						const [parentId, subtaskId] = depId
-							.split('.')
-							.map((id) => parseInt(id, 10));
-						depTask = allTasks.find((t) => t.id === parentId);
+						const [parentId] = depId.split('.').map((id) => parseInt(id, 10));
+						parentTaskId = parentId;
 					} else {
-						// It's a regular task ID - normalize to number for comparison
-						const normalizedDepId =
-							typeof depId === 'string' ? parseInt(depId, 10) : depId;
-						depTask = allTasks.find((t) => t.id === normalizedDepId);
+						parentTaskId = typeof depId === 'string' ? parseInt(depId, 10) : depId;
 					}
-					return !depTask || depTask.tag === targetTag;
+
+					// If dependency resolves to a task in the source tag, drop it (would be cross-tag after move)
+					const existsInSource = sourceTagTasks.some((t) => t.id === parentTaskId);
+					if (existsInSource) return false;
+
+					// If dependency resolves to a task in the target tag, keep it
+					const existsInTarget = targetTagTasks.some((t) => t.id === parentTaskId);
+					if (existsInTarget) return true;
+
+					// Otherwise, keep as-is (unknown/unresolved dependency)
+					return true;
 				});
 			});
 
