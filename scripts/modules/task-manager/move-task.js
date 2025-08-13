@@ -62,6 +62,43 @@ const MOVE_ERROR_CODES = {
 };
 
 /**
+ * Normalize a dependency value to its numeric parent task ID.
+ * - Numbers are returned as-is (if finite)
+ * - Numeric strings are parsed ("5" -> 5)
+ * - Dotted strings return the parent portion ("5.2" -> 5)
+ * - Empty/invalid values return null
+ * - null/undefined are preserved
+ * @param {number|string|null|undefined} dep
+ * @returns {number|null|undefined}
+ */
+function normalizeDependency(dep) {
+	if (dep === null || dep === undefined) return dep;
+	if (typeof dep === 'number') return Number.isFinite(dep) ? dep : null;
+	if (typeof dep === 'string') {
+		const trimmed = dep.trim();
+		if (trimmed === '') return null;
+		const parentPart = trimmed.includes('.') ? trimmed.split('.')[0] : trimmed;
+		const parsed = parseInt(parentPart, 10);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+	return null;
+}
+
+/**
+ * Normalize an array of dependency values to numeric IDs.
+ * Preserves null/undefined input (returns as-is) and filters out invalid entries.
+ * @param {Array<any>|null|undefined} deps
+ * @returns {Array<number>|null|undefined}
+ */
+function normalizeDependencies(deps) {
+	if (deps === null || deps === undefined) return deps;
+	if (!Array.isArray(deps)) return deps;
+	return deps
+		.map((d) => normalizeDependency(d))
+		.filter((n) => Number.isFinite(n));
+}
+
+/**
  * Move one or more tasks/subtasks to new positions
  * @param {string} tasksPath - Path to tasks.json file
  * @param {string} sourceId - ID(s) of the task/subtask to move (e.g., '5' or '5.2' or '5,6,7')
@@ -698,8 +735,8 @@ async function resolveDependencies(
 		);
 		const allDependentTaskIds = allDependentTaskIdsRaw.filter((depId) => {
 			// Only numeric task IDs are eligible to be moved (subtasks cannot be moved cross-tag)
-			const numericId = typeof depId === 'string' ? parseInt(depId, 10) : depId;
-			return Number.isFinite(numericId) && sourceTagIds.has(numericId);
+			const normalizedId = normalizeDependency(depId);
+			return Number.isFinite(normalizedId) && sourceTagIds.has(normalizedId);
 		});
 
 		const allTaskIdsToMove = [...new Set([...taskIds, ...allDependentTaskIds])];
@@ -735,27 +772,23 @@ async function resolveDependencies(
 					? allTasks.filter((t) => t && t.tag === targetTag)
 					: [];
 				task.dependencies = task.dependencies.filter((depId) => {
-					// Normalize to numeric parent task ID when possible
-					let parentTaskId = null;
-					if (typeof depId === 'string' && depId.includes('.')) {
-						const [parentId] = depId.split('.').map((id) => parseInt(id, 10));
-						parentTaskId = parentId;
-					} else {
-						parentTaskId =
-							typeof depId === 'string' ? parseInt(depId, 10) : depId;
-					}
+					const parentTaskId = normalizeDependency(depId);
 
 					// If dependency resolves to a task in the source tag, drop it (would be cross-tag after move)
-					const existsInSource = sourceTagTasks.some(
-						(t) => t.id === parentTaskId
-					);
-					if (existsInSource) return false;
+					if (
+						Number.isFinite(parentTaskId) &&
+						sourceTagTasks.some((t) => t.id === parentTaskId)
+					) {
+						return false;
+					}
 
 					// If dependency resolves to a task in the target tag, keep it
-					const existsInTarget = targetTagTasks.some(
-						(t) => t.id === parentTaskId
-					);
-					if (existsInTarget) return true;
+					if (
+						Number.isFinite(parentTaskId) &&
+						targetTagTasks.some((t) => t.id === parentTaskId)
+					) {
+						return true;
+					}
 
 					// Otherwise, keep as-is (unknown/unresolved dependency)
 					return true;

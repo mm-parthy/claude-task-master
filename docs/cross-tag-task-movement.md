@@ -65,13 +65,10 @@ This removes the dependency relationships and moves only the specified task.
 
 ### Force Move
 
-Force the move even with dependency conflicts:
+Note: Force moves are no longer supported. Instead, use one of these options:
 
-```bash
-# Removed: force moves are not supported. Use one of:
-# - --with-dependencies (move dependents too)
-# - --ignore-dependencies (break cross-tag deps)
-```
+- `--with-dependencies` — move dependents together
+- `--ignore-dependencies` — break cross-tag dependencies
 
 ⚠️ **Warning**: This may break dependency relationships and should be used with caution.
 
@@ -266,11 +263,13 @@ task-master move --from=5 --from-tag=backlog --to-tag=done --ignore-dependencies
 
 ### Scenario 3: Force Move
 
+Choose one of these options explicitly:
+
 ```bash
-# Choose explicitly:
-# Move together
+# Move together with dependencies
 task-master move --from=5 --from-tag=backlog --to-tag=in-progress --with-dependencies
-# Or break deps
+
+# Or break dependencies
 task-master move --from=5 --from-tag=backlog --to-tag=in-progress --ignore-dependencies
 ```
 
