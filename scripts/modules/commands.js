@@ -4175,6 +4175,18 @@ Examples:
 
 				console.log(chalk.green(`✓ ${result.message}`));
 
+				// Print any tips returned from the move operation (e.g., after ignoring dependencies)
+				if (Array.isArray(result.tips) && result.tips.length > 0) {
+					console.log('\n' + chalk.yellow.bold('Next Steps:'));
+					result.tips.forEach((t) => console.log(chalk.white(`  • ${t}`)));
+				}
+
+				// Print any tips returned from the move operation (e.g., after ignoring dependencies)
+				if (Array.isArray(result.tips) && result.tips.length > 0) {
+					console.log('\n' + chalk.yellow.bold('Next Steps:'));
+					result.tips.forEach((t) => console.log(chalk.white(`  • ${t}`)));
+				}
+
 				// Check if source tag still contains tasks before regenerating files
 				const tasksData = readJSON(
 					taskMaster.getTasksPath(),
@@ -4441,6 +4453,21 @@ Examples:
 					await handleWithinTagMove(moveContext);
 				}
 			} catch (error) {
+				const errMsg = String(error && (error.message || error));
+				if (errMsg.includes('already exists in target tag')) {
+					console.error(chalk.red(`Error: ${errMsg}`));
+					console.log(
+						'\n' +
+						chalk.yellow.bold('Conflict: ID already exists in target tag') +
+						'\n' +
+						chalk.white('  • Choose a different target tag without conflicting IDs') +
+						'\n' +
+						chalk.white('  • Move a different set of IDs (avoid existing ones)') +
+						'\n' +
+						chalk.white('  • If needed, move within-tag to a new ID first, then cross-tag move')
+					);
+					process.exit(1);
+				}
 				handleMoveError(error, moveContext);
 			}
 		});
