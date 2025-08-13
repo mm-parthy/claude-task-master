@@ -4103,12 +4103,7 @@ Examples:
 							'  task-master move --from=5 --from-tag=backlog --to-tag=in-progress --ignore-dependencies'
 						) +
 						'\n\n' +
-						chalk.white('  # Force move (may break dependencies)') +
 						'\n' +
-						chalk.white(
-							'  task-master move --from=5 --from-tag=backlog --to-tag=in-progress --force'
-						) +
-						'\n\n' +
 						chalk.yellow.bold('Best Practices:') +
 						'\n' +
 						chalk.white(
@@ -4117,10 +4112,6 @@ Examples:
 						'\n' +
 						chalk.white(
 							'  • Use --ignore-dependencies to break cross-tag dependencies'
-						) +
-						'\n' +
-						chalk.white(
-							'  • Use --force only when you understand the consequences'
 						) +
 						'\n' +
 						chalk.white(

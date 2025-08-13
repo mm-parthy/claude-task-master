@@ -68,7 +68,9 @@ This removes the dependency relationships and moves only the specified task.
 Force the move even with dependency conflicts:
 
 ```bash
-task-master move --from=5 --from-tag=backlog --to-tag=in-progress --force
+# Removed: force moves are not supported. Use one of:
+# - --with-dependencies (move dependents too)
+# - --ignore-dependencies (break cross-tag deps)
 ```
 
 ⚠️ **Warning**: This may break dependency relationships and should be used with caution.
@@ -93,7 +95,7 @@ Resolution options:
   2. Break dependencies: task-master move --from=5,6 --from-tag=backlog --to-tag=in-progress --ignore-dependencies
   3. Validate and fix dependencies: task-master validate-dependencies && task-master fix-dependencies
   4. Move dependencies first: task-master move --from=2,3 --from-tag=backlog --to-tag=in-progress
-  5. Force move (may break dependencies): task-master move --from=5,6 --from-tag=backlog --to-tag=in-progress --force
+  5. If necessary, re-run with --with-dependencies or --ignore-dependencies depending on your intent
 ```
 
 ### Subtask Movement Restrictions
@@ -149,7 +151,6 @@ task-master fix-dependencies
 
 - **`--with-dependencies`**: When you want to maintain task relationships
 - **`--ignore-dependencies`**: When you want to break cross-tag dependencies
-- **`--force`**: Only when you understand the consequences
 
 ### 3. Organize by Context
 
@@ -266,8 +267,11 @@ task-master move --from=5 --from-tag=backlog --to-tag=done --ignore-dependencies
 ### Scenario 3: Force Move
 
 ```bash
-# Force move despite conflicts
-task-master move --from=5 --from-tag=backlog --to-tag=in-progress --force
+# Choose explicitly:
+# Move together
+task-master move --from=5 --from-tag=backlog --to-tag=in-progress --with-dependencies
+# Or break deps
+task-master move --from=5 --from-tag=backlog --to-tag=in-progress --ignore-dependencies
 ```
 
 ### Scenario 4: Moving Subtasks
