@@ -92,7 +92,7 @@ Resolution options:
   2. Break dependencies: task-master move --from=5,6 --from-tag=backlog --to-tag=in-progress --ignore-dependencies
   3. Validate and fix dependencies: task-master validate-dependencies && task-master fix-dependencies
   4. Move dependencies first: task-master move --from=2,3 --from-tag=backlog --to-tag=in-progress
-  5. If necessary, re-run with --with-dependencies or --ignore-dependencies depending on your intent
+  5. After deciding, re-run the move with either --with-dependencies or --ignore-dependencies
 ```
 
 ### Subtask Movement Restrictions
